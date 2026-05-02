@@ -275,6 +275,29 @@ ipcMain.handle('window:set-ignore-mouse-events', (event, ignore, opts) => {
   return true
 })
 
+// Returns the OS cursor position translated into the renderer's
+// content-area client coordinates (the coord system used by
+// document.elementFromPoint). The renderer's click-through hook calls
+// this exactly once on mount, so it can run a real hit-test against
+// the current cursor position WITHOUT waiting for a mousemove event
+// to arrive — otherwise the very first click after launching MuralDesk
+// is racy: setting click-through ON pre-emptively breaks toolbar/card
+// clicks if the cursor was already over them, while setting it OFF
+// pre-emptively breaks desktop click-through if the cursor was over
+// empty area. With a real hit-test we always start in the correct
+// state. Returns null if the window is destroyed.
+ipcMain.handle('window:get-cursor-position-in-window', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win || win.isDestroyed()) return null
+  try {
+    const cursor = screen.getCursorScreenPoint()
+    const bounds = win.getContentBounds()
+    return { x: cursor.x - bounds.x, y: cursor.y - bounds.y }
+  } catch {
+    return null
+  }
+})
+
 // ---- App lifecycle ---------------------------------------------------------
 
 app.whenReady().then(() => {

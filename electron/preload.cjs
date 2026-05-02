@@ -44,4 +44,12 @@ contextBridge.exposeInMainWorld('muraldesk', {
     !!ignore,
     opts && typeof opts === 'object' ? { forward: !!opts.forward } : undefined,
   ),
+  // Returns {x, y} in the renderer's content-area client coords, or
+  // null if unavailable. Used by useElectronClickThrough on mount to
+  // run a real hit-test against the current cursor position before
+  // any mousemove event has arrived, so the initial click-through
+  // state is always correct.
+  getCursorPositionInWindow: () => ipcRenderer.invoke(
+    'window:get-cursor-position-in-window',
+  ),
 })
