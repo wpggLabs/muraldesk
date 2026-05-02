@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBoard } from './hooks/useBoard'
 import { useDesktopMode } from './hooks/useDesktopMode'
 import { useElectronClickThrough } from './hooks/useElectronClickThrough'
+import { useSnap } from './hooks/useSnap'
 import { buildSampleItems } from './lib/sampleBoard'
 import { defaultLinkSize } from './lib/linkType'
 import {
@@ -65,6 +66,13 @@ export default function App() {
     displayMode,
     toggleDisplayMode,
   } = useDesktopMode()
+
+  // Snap-to-grid preference (off by default, persisted in its own
+  // localStorage key — does NOT touch the board layout key owned by
+  // useBoard). When on, BoardItem applies react-rnd's native dragGrid
+  // and resizeGrid props, and renders subtle alignment guide lines
+  // while a card is being dragged or resized.
+  const { snap, toggleSnap, gridSize: snapGrid } = useSnap()
 
   // Mark <html data-electron="true"> so src/index.css can paint the
   // root transparent in the Electron build. The web/PWA build never
@@ -566,6 +574,8 @@ export default function App() {
           onSelect={setSelectedId}
           onDuplicate={duplicateItem}
           onHoverChange={handleItemHoverChange}
+          snap={snap}
+          snapGrid={snapGrid}
         />
       ))}
 
@@ -589,6 +599,8 @@ export default function App() {
         onToggleDisplayMode={toggleDisplayMode}
         hasItems={items.length > 0}
         anyItemHovered={anyItemHovered}
+        snap={snap}
+        onToggleSnap={toggleSnap}
         onMinimizeWindow={handleMinimize}
         onCloseWindow={handleClose}
         manualOverride={manualToolbarOverride}

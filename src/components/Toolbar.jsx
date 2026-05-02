@@ -45,6 +45,12 @@ function Toolbar({
   onToggleDisplayMode,
   hasItems = false,
   anyItemHovered = false,
+  // Snap-to-grid toggle (default OFF, persisted by useSnap in its own
+  // localStorage key — does not touch the board layout key). When true
+  // the toolbar button is highlighted and BoardItem applies react-rnd's
+  // dragGrid + resizeGrid props plus subtle on-drag alignment guides.
+  snap = false,
+  onToggleSnap,
   onMinimizeWindow,
   onCloseWindow,
   // Toolbar visibility override driven by App's Ctrl+Shift+T shortcut.
@@ -384,6 +390,20 @@ function Toolbar({
             active={displayMode === 'all'}
           />
         )}
+
+        {/* Snap-to-grid toggle. Lives in the workspace-mode cluster
+            alongside Fullscreen / Desktop / Display so it reads as a
+            "view mode" rather than an item action. Default off — the
+            mural feel is preserved unless the user opts in. */}
+        <PillBtn
+          icon="🧲"
+          label={snap ? 'Snap On' : 'Snap Off'}
+          onClick={onToggleSnap}
+          active={snap}
+          title={snap
+            ? 'Snap is ON — drag/resize snaps to a 24 px grid. Click to turn off.'
+            : 'Snap is OFF — drag/resize freely. Click to turn on.'}
+        />
 
         <Divider />
 
