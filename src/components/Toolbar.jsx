@@ -34,6 +34,14 @@ function Toolbar({
   isElectron = false,
   desktopMode = false,
   onToggleDesktopMode,
+  // Display selection for Desktop Mode. 'current' covers the monitor
+  // the window is on; 'all' spans every connected monitor. The button
+  // is shown only in the Electron build; on web it's a no-op concept.
+  // The toggle is always clickable — selecting while NOT in Desktop
+  // Mode just persists the preference for the next overlay entry; if
+  // already in Desktop Mode, main reapplies bounds immediately.
+  displayMode = 'current',
+  onToggleDisplayMode,
   hasItems = false,
   anyItemHovered = false,
   onMinimizeWindow,
@@ -325,6 +333,15 @@ function Toolbar({
             label={desktopMode ? 'Exit Desktop' : 'Desktop'}
             onClick={onToggleDesktopMode}
             active={desktopMode}
+          />
+        )}
+
+        {isElectron && (
+          <PillBtn
+            icon={displayMode === 'all' ? '▦' : '▢'}
+            label={displayMode === 'all' ? 'All Displays' : '1 Display'}
+            onClick={onToggleDisplayMode}
+            active={displayMode === 'all'}
           />
         )}
 
