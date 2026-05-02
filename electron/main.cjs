@@ -305,6 +305,42 @@ function createWindow() {
 let inOverlayDisplay = false
 let prevWindowBounds = null
 let prevMaximized = false
+// Display selection for Desktop Mode:
+//   'current' → cover the monitor the window is currently on (default).
+//   'all'     → cover the bounding rectangle of every connected display
+//               (the full virtual desktop) using a single span window.
+// The renderer's localStorage `mural.displayMode` is the source of truth;
+// main holds a mirror updated via the `desktop:set-display-mode` IPC so
+// enterOverlayDisplay / reapplyOverlayBounds can read it synchronously.
+// We deliberately do NOT reset this in createWindow: it's a session
+// preference, not tied to a specific window's lifecycle.
+//
+// KNOWN LIMITATIONS of single-span "all displays":
+//   - Non-rectangular monitor layouts (e.g. two monitors at different
+//     heights, or an L-shape) produce "dead zones" inside the union
+//     rect where no physical screen exists. The window region still
+//     covers them, but nothing is visible there. Items dragged into a
+//     dead zone keep their renderer-local coords (the board state is
+//     fine) but the user can't see/grab them until they exit Desktop
+//     Mode and the items reappear at their stored coords (which may
+//     also be off-screen in the smaller normal window — at which
+//     point they're recoverable by re-entering Desktop Mode in 'all'
+//     mode and dragging back to a real display).
+//   - Mixed-DPI multi-monitor setups: the BrowserWindow's content
+//     scale follows whichever display the window's origin is on, so a
+//     200% HiDPI monitor + 100% standard monitor will render the
+//     200% half at "double size" relative to the renderer's logical
+//     coords. This is a fundamental limitation of single-window span
+//     and is the main reason a future per-monitor-window approach
+//     would be more correct (see TODO below).
+//   - TODO(per-monitor-windows): for a more robust multi-monitor
+//     experience we could create one transparent overlay
+//     BrowserWindow per display, each with its own renderer, and
+//     synchronize board state across them via IPC. That is
+//     substantially more complex (cross-window selection, click-
+//     through coordination, toolbar placement, drag-across-windows)
+//     and is out of scope for this iteration.
+let displayMode = 'current' // 'current' | 'all'
 
 function emitOverlayChanged(win, on) {
   if (!win || win.isDestroyed()) return
@@ -322,6 +358,39 @@ function emitOverlayChanged(win, on) {
   }
 }
 
+// Compute the BrowserWindow rect for the requested overlay display mode.
+//
+// 'current' → screen.getDisplayMatching(win.getBounds()).bounds. This is
+//             the display whose intersection with the window rect is
+//             largest; we use full bounds (not workArea) so the overlay
+//             covers the taskbar / dock too. Existing behavior.
+//
+// 'all'     → the bounding rectangle of every connected display. With
+//             negative-coordinate displays (e.g. a monitor positioned
+//             to the left of primary at x = -1920) the min/max math
+//             below handles them correctly because Electron's screen
+//             API uses logical (DIP) coordinates throughout. Returns
+//             null only if no displays are connected (effectively
+//             impossible during normal operation but handled
+//             defensively so callers can fall back gracefully).
+function computeOverlayBounds(win, mode) {
+  if (mode === 'all') {
+    const displays = screen.getAllDisplays()
+    if (!displays || displays.length === 0) return null
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const d of displays) {
+      const b = d.bounds
+      if (b.x < minX) minX = b.x
+      if (b.y < minY) minY = b.y
+      if (b.x + b.width > maxX) maxX = b.x + b.width
+      if (b.y + b.height > maxY) maxY = b.y + b.height
+    }
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+  }
+  // 'current' (default / fallback)
+  return screen.getDisplayMatching(win.getBounds()).bounds
+}
+
 function enterOverlayDisplay(win) {
   if (!win || win.isDestroyed()) return false
   if (inOverlayDisplay) return true
@@ -334,17 +403,16 @@ function enterOverlayDisplay(win) {
   prevWindowBounds = prevMaximized
     ? (typeof win.getNormalBounds === 'function' ? win.getNormalBounds() : win.getBounds())
     : win.getBounds()
-  // Find the display the window is currently "on" and expand to its
-  // FULL physical bounds (not workArea — we want the overlay to cover
-  // the taskbar / dock area too, since this is a real-estate overlay
-  // for desktop mural use). screen.getDisplayMatching picks the
-  // display with the largest intersection with the window rect.
-  const display = screen.getDisplayMatching(win.getBounds())
+  // Compute the target overlay rect from the current displayMode mirror
+  // (set by the renderer on launch and on every Toolbar toggle via the
+  // `desktop:set-display-mode` IPC).
+  const bounds = computeOverlayBounds(win, displayMode)
+  if (!bounds) return false
   if (prevMaximized) win.unmaximize()
   // Set the flag BEFORE setBounds so the resize/move events that
   // immediately follow are correctly ignored by persistGeometry.
   inOverlayDisplay = true
-  win.setBounds(display.bounds)
+  win.setBounds(bounds)
   // Lock the overlay in place: the toolbar pill is the OS window-drag
   // handle (`-webkit-app-region: drag`) so without setMovable(false)
   // the user could accidentally drag the entire overlay off-screen
@@ -354,6 +422,21 @@ function enterOverlayDisplay(win) {
   win.setResizable(false)
   emitOverlayChanged(win, true)
   return true
+}
+
+// Re-apply overlay bounds when something changes WHILE we're already in
+// overlay mode — the user toggling display mode (current ↔ all) or a
+// monitor being plugged in / removed in 'all' mode. We never enter or
+// exit overlay here; we just resize to match the new requested rect.
+// `inOverlayDisplay` stays true throughout so persistGeometry keeps
+// ignoring the resulting move/resize events and the saved normal
+// geometry is not overwritten.
+function reapplyOverlayBounds(win) {
+  if (!win || win.isDestroyed()) return
+  if (!inOverlayDisplay) return
+  const bounds = computeOverlayBounds(win, displayMode)
+  if (!bounds) return
+  win.setBounds(bounds)
 }
 
 function exitOverlayDisplay(win) {
@@ -410,6 +493,24 @@ ipcMain.handle('desktop:toggle-fullscreen', (event) => {
   if (inOverlayDisplay) exitOverlayDisplay(win)
   else enterOverlayDisplay(win)
   return inOverlayDisplay
+})
+
+// Display mode is driven by the renderer (localStorage source of truth).
+// This handler is just a mirror update so enterOverlayDisplay /
+// reapplyOverlayBounds can read the current mode synchronously, plus
+// an immediate retarget if we're already in overlay mode (so the user
+// sees the change without having to toggle Desktop Mode off and back on).
+//
+// The mode value is validated defensively — anything not exactly 'all'
+// falls back to 'current'. We never trust IPC payload shape blindly
+// even though the renderer is our own code; defense-in-depth keeps the
+// surface narrow if a future preload regression smuggled a bad value.
+ipcMain.handle('desktop:set-display-mode', (event, mode) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  const next = mode === 'all' ? 'all' : 'current'
+  displayMode = next
+  if (win) reapplyOverlayBounds(win)
+  return displayMode
 })
 
 ipcMain.handle('desktop:is-fullscreen', (event) => {
@@ -611,8 +712,26 @@ function createTray() {
 
 // ---- App lifecycle ---------------------------------------------------------
 
+// Multi-monitor hotplug: when displays are added, removed, or have their
+// metrics changed (resolution, position, scale), the union rect for
+// 'all' mode changes too. Reapply so the overlay tracks the new
+// virtual desktop. In 'current' mode we leave the overlay alone — if
+// the active display was the one removed Electron will reposition the
+// window automatically; the user can re-enter Desktop Mode from the
+// new display if needed. The handler is registered once on app.whenReady
+// (NOT inside createWindow) so it survives macOS dock-reactivation.
+function onDisplayLayoutChanged() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (!inOverlayDisplay) return
+  if (displayMode !== 'all') return
+  reapplyOverlayBounds(mainWindow)
+}
+
 app.whenReady().then(() => {
   createWindow()
+  screen.on('display-added', onDisplayLayoutChanged)
+  screen.on('display-removed', onDisplayLayoutChanged)
+  screen.on('display-metrics-changed', onDisplayLayoutChanged)
   // Tray creation is best-effort. createTray() returns null if the
   // icon file is missing/empty (so we don't create an invisible tray
   // that would strand the user); the constructor can also throw on

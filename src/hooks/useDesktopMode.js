@@ -30,6 +30,29 @@ import { useCallback, useEffect, useState } from 'react'
 // gating in main.cjs).
 
 const STORAGE_KEY = 'mural.desktopMode'
+// Persisted Desktop-Mode display selection. 'current' (default) covers
+// the monitor the window is on; 'all' spans the full virtual desktop
+// via a single overlay BrowserWindow. Renderer is the source of truth;
+// the Electron main process mirrors via the `setDisplayMode` IPC.
+const STORAGE_KEY_DISPLAY_MODE = 'mural.displayMode'
+
+function readStoredDisplayMode() {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY_DISPLAY_MODE)
+    return v === 'all' ? 'all' : 'current'
+  } catch {
+    return 'current'
+  }
+}
+
+function writeStoredDisplayMode(mode) {
+  try {
+    if (mode === 'all') localStorage.setItem(STORAGE_KEY_DISPLAY_MODE, 'all')
+    else localStorage.removeItem(STORAGE_KEY_DISPLAY_MODE)
+  } catch {
+    // localStorage may be unavailable in private mode; non-fatal.
+  }
+}
 
 function getBridge() {
   if (typeof window === 'undefined') return null
@@ -63,6 +86,12 @@ export function useDesktopMode() {
   })
   const [desktopMode, setDesktopModeState] = useState(() =>
     isElectron ? readStoredDesktopMode() : false,
+  )
+  // Display selection. Always 'current' on the web build (web has no
+  // multi-monitor overlay concept); the value is read from localStorage
+  // only in Electron. Pushed to main on launch via the effect below.
+  const [displayMode, setDisplayModeState] = useState(() =>
+    isElectron ? readStoredDisplayMode() : 'current',
   )
 
   // Subscribe to web Fullscreen API changes. Only relevant on the
@@ -103,14 +132,27 @@ export function useDesktopMode() {
     }
   }, [bridge])
 
-  // Re-apply desktopMode on launch: if the user had it enabled last
-  // session, ask the Electron window to re-enter overlay mode.
+  // Replay persisted state on launch:
+  //   1. Push the stored displayMode to main FIRST, awaited, so when
+  //      step 2 fires main has the correct mirror in place and
+  //      enterOverlayDisplay computes the right rect on first try.
+  //   2. If desktopMode was on last session, re-enter overlay mode.
+  // Sequenced via async IIFE so we don't rely on undocumented IPC
+  // ordering across distinct invoke calls.
   useEffect(() => {
     if (!bridge) return
-    if (!desktopMode) return
-    bridge.setFullscreen(true).catch(() => {})
+    let cancelled = false
+    ;(async () => {
+      try { await bridge.setDisplayMode(displayMode) } catch { /* ignore */ }
+      if (cancelled) return
+      if (desktopMode) {
+        try { await bridge.setFullscreen(true) } catch { /* ignore */ }
+      }
+    })()
+    return () => { cancelled = true }
     // We intentionally only run this effect once on mount; toggling
-    // desktopMode at runtime is handled by `toggleDesktopMode` below.
+    // desktopMode / displayMode at runtime is handled by their
+    // respective setters below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -139,6 +181,23 @@ export function useDesktopMode() {
     setDesktopMode(!desktopMode)
   }, [desktopMode, setDesktopMode])
 
+  // Display mode setter. Updates local state + localStorage immediately,
+  // then mirrors to main. If we're currently in overlay mode, main will
+  // call reapplyOverlayBounds and the window resizes to the new rect
+  // without exiting/re-entering Desktop Mode. No-op on the web build.
+  const setDisplayMode = useCallback(async (mode) => {
+    const next = mode === 'all' ? 'all' : 'current'
+    setDisplayModeState(next)
+    writeStoredDisplayMode(next)
+    if (bridge) {
+      try { await bridge.setDisplayMode(next) } catch { /* ignore */ }
+    }
+  }, [bridge])
+
+  const toggleDisplayMode = useCallback(() => {
+    setDisplayMode(displayMode === 'all' ? 'current' : 'all')
+  }, [displayMode, setDisplayMode])
+
   return {
     isElectron,
     isFullscreen,
@@ -146,5 +205,8 @@ export function useDesktopMode() {
     desktopMode,
     setDesktopMode,
     toggleDesktopMode,
+    displayMode,
+    setDisplayMode,
+    toggleDisplayMode,
   }
 }

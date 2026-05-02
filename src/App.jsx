@@ -52,6 +52,8 @@ export default function App() {
     desktopMode,
     setDesktopMode,
     toggleDesktopMode,
+    displayMode,
+    toggleDisplayMode,
   } = useDesktopMode()
 
   // Mark <html data-electron="true"> so src/index.css can paint the
@@ -442,6 +444,8 @@ export default function App() {
         isElectron={isElectron}
         desktopMode={desktopMode}
         onToggleDesktopMode={toggleDesktopMode}
+        displayMode={displayMode}
+        onToggleDisplayMode={toggleDisplayMode}
         hasItems={items.length > 0}
         anyItemHovered={anyItemHovered}
         onMinimizeWindow={handleMinimize}

@@ -22,6 +22,17 @@ contextBridge.exposeInMainWorld('muraldesk', {
   setFullscreen: (on) => ipcRenderer.invoke('desktop:set-fullscreen', !!on),
   toggleFullscreen: () => ipcRenderer.invoke('desktop:toggle-fullscreen'),
   isFullscreen: () => ipcRenderer.invoke('desktop:is-fullscreen'),
+  // Desktop Mode display selection: 'current' (cover the monitor the
+  // window is on) or 'all' (cover the bounding rect of every connected
+  // monitor — single span window). The renderer's localStorage is the
+  // source of truth; this call mirrors the value to main so the next
+  // setFullscreen(true) — or an in-progress overlay — uses it. Anything
+  // other than the literal string 'all' is normalized to 'current' on
+  // both sides of the bridge.
+  setDisplayMode: (mode) => ipcRenderer.invoke(
+    'desktop:set-display-mode',
+    mode === 'all' ? 'all' : 'current',
+  ),
   onFullscreenChange: (cb) => {
     if (typeof cb !== 'function') return () => {}
     const handler = (_event, value) => {
