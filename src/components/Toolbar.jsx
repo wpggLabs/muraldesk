@@ -253,32 +253,53 @@ function Toolbar({
 
   return (
     <>
+      {/*
+        Hover "safe zone" wrapper. The visible pill is INSIDE this
+        container, but the container extends 14px beyond the pill on
+        every side via padding. Because onMouseEnter/onMouseLeave are
+        attached HERE (not on the pill), a cursor moving toward the
+        toolbar from below or the side keeps the hover state alive
+        before it actually crosses the pill border — the toolbar can
+        never "slip away" from a user moving toward it. The padding is
+        transparent so visually nothing changes.
+
+        The wrapper itself is pointer-events: none when fully hidden so
+        clicks pass straight through to the canvas / desktop in
+        Electron transparent-overlay mode.
+      */}
       <div
         data-muraldesk-interactive="true"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
           position: 'fixed',
-          top: 14,
+          top: 0,
           left: '50%',
+          transform: 'translateX(-50%)',
           zIndex: 9999,
+          padding: '14px 14px 18px',
+          pointerEvents: fullyHidden ? 'none' : 'auto',
+        }}
+      >
+      <div
+        style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 2,
-          background: 'rgba(20,20,26,0.78)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 999,
-          padding: '5px 8px',
-          boxShadow: '0 10px 32px rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          gap: 1,
+          background: 'var(--surface-glass-strong)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-pill)',
+          padding: '5px 7px',
+          boxShadow:
+            '0 12px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset',
+          backdropFilter: 'blur(18px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(18px) saturate(180%)',
           maxWidth: 'calc(100vw - 32px)',
           flexWrap: 'wrap',
           justifyContent: 'center',
-          opacity: fullyHidden ? 0 : (dim ? 0.32 : 1),
-          pointerEvents: fullyHidden ? 'none' : 'auto',
-          transform: fullyHidden ? 'translateX(-50%) translateY(-12px)' : 'translateX(-50%)',
-          transition: 'opacity 0.25s ease, transform 0.25s ease',
+          opacity: fullyHidden ? 0 : (dim ? 0.36 : 1),
+          transform: fullyHidden ? 'translateY(-14px)' : 'translateY(0)',
+          transition: 'opacity var(--t-med) var(--ease-out), transform var(--t-med) var(--ease-out)',
           // In Electron the OS frame is gone, so the toolbar pill doubles
           // as the window's drag handle. Buttons inside opt out of the
           // drag region with WebkitAppRegion: 'no-drag' (see PillBtn).
@@ -288,13 +309,26 @@ function Toolbar({
       >
         <span
           style={{
-            color: 'var(--accent)',
-            fontWeight: 700,
+            color: 'var(--text)',
+            fontWeight: 600,
             fontSize: 12,
-            padding: '0 8px',
-            letterSpacing: 0.5,
+            padding: '0 10px 0 8px',
+            letterSpacing: -0.1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
           }}
         >
+          <span
+            aria-hidden
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'var(--accent)',
+              boxShadow: '0 0 8px rgba(124,108,255,0.7)',
+            }}
+          />
           MuralDesk
         </span>
 
@@ -383,6 +417,7 @@ function Toolbar({
         <input ref={videoInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleVideoFile} />
         <input ref={importInputRef} type="file" accept="application/json,.json,.muraldesk.json" style={{ display: 'none' }} onChange={handleImportFile} />
       </div>
+      </div>
 
       {linkDialog && (
         <div
@@ -393,10 +428,13 @@ function Toolbar({
             // Above the toolbar pill (z:9999) so the dialog always
             // wins clicks even when the toolbar is force-shown.
             zIndex: 99999,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'rgba(0,0,0,0.55)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            animation: 'muraldesk-overlay-in 200ms var(--ease-out) both',
           }}
           onClick={() => setLinkDialog(false)}
         >
@@ -405,21 +443,29 @@ function Toolbar({
             onClick={(e) => e.stopPropagation()}
             style={{
               background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              padding: 24,
-              width: 360,
+              border: '1px solid var(--border-strong)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 22,
+              width: 380,
               display: 'flex',
               flexDirection: 'column',
-              gap: 12,
-              boxShadow: 'var(--shadow)',
+              gap: 14,
+              boxShadow: 'var(--shadow-lg)',
+              animation: 'muraldesk-dialog-in 220ms var(--ease-out) both',
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: 15 }}>Add Link Card</div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15, letterSpacing: -0.1, marginBottom: 4 }}>
+                Add a link
+              </div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                Paste a URL — YouTube, an image, a video, or any web page.
+              </div>
+            </div>
             <input
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="URL (e.g. https://example.com)"
+              placeholder="https://example.com"
               required
               autoFocus
               style={inputStyle}
@@ -437,12 +483,12 @@ function Toolbar({
               rows={2}
               style={{ ...inputStyle, resize: 'vertical' }}
             />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 2 }}>
               <button type="button" onClick={() => setLinkDialog(false)} style={cancelBtnStyle}>
                 Cancel
               </button>
               <button type="submit" style={submitBtnStyle}>
-                Add Card
+                Add card
               </button>
             </div>
           </form>
@@ -466,8 +512,8 @@ function Divider() {
       style={{
         width: 1,
         height: 18,
-        background: 'rgba(255,255,255,0.08)',
-        margin: '0 4px',
+        background: 'var(--border)',
+        margin: '0 5px',
       }}
     />
   )
@@ -476,9 +522,9 @@ function Divider() {
 function PillBtn({ icon, label, onClick, danger, active, compact, title }) {
   const [hov, setHov] = useState(false)
   const bg = active
-    ? 'rgba(108,99,255,0.22)'
+    ? 'var(--accent-soft)'
     : hov
-      ? danger ? 'rgba(255,79,79,0.18)' : 'rgba(255,255,255,0.08)'
+      ? danger ? 'var(--danger-soft)' : 'rgba(255,255,255,0.07)'
       : 'transparent'
   const color = danger
     ? hov ? 'var(--danger)' : 'var(--text-muted)'
@@ -496,13 +542,15 @@ function PillBtn({ icon, label, onClick, danger, active, compact, title }) {
         background: bg,
         color,
         border: 'none',
-        borderRadius: 999,
-        padding: compact ? '4px 8px' : '4px 10px',
-        fontSize: 13,
+        borderRadius: 'var(--radius-pill)',
+        padding: compact ? '5px 9px' : '5px 11px',
+        fontSize: 12.5,
+        fontWeight: 500,
+        letterSpacing: 0.05,
         display: 'flex',
         alignItems: 'center',
-        gap: compact ? 0 : 5,
-        transition: 'all 0.12s',
+        gap: compact ? 0 : 6,
+        transition: 'background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out)',
         whiteSpace: 'nowrap',
         cursor: 'pointer',
         // Opt this clickable button OUT of the toolbar's window-drag
@@ -513,7 +561,7 @@ function PillBtn({ icon, label, onClick, danger, active, compact, title }) {
       }}
     >
       <span style={{ fontSize: 13, lineHeight: 1 }}>{icon}</span>
-      {!compact && <span style={{ fontSize: 12 }}>{label}</span>}
+      {!compact && <span>{label}</span>}
     </button>
   )
 }
@@ -521,29 +569,35 @@ function PillBtn({ icon, label, onClick, danger, active, compact, title }) {
 const inputStyle = {
   background: 'var(--surface2)',
   border: '1px solid var(--border)',
-  borderRadius: 7,
-  padding: '8px 10px',
+  borderRadius: 'var(--radius-sm)',
+  padding: '9px 11px',
   color: 'var(--text)',
   fontSize: 13,
   width: '100%',
+  transition: 'border-color var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out)',
 }
 
 const cancelBtnStyle = {
-  background: 'var(--surface2)',
+  background: 'transparent',
   color: 'var(--text-muted)',
   border: '1px solid var(--border)',
-  borderRadius: 7,
-  padding: '6px 16px',
+  borderRadius: 'var(--radius-sm)',
+  padding: '7px 16px',
   fontSize: 13,
+  fontWeight: 500,
   cursor: 'pointer',
+  transition: 'background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out)',
 }
 
 const submitBtnStyle = {
   background: 'var(--accent)',
   color: '#fff',
   border: 'none',
-  borderRadius: 7,
-  padding: '6px 16px',
+  borderRadius: 'var(--radius-sm)',
+  padding: '7px 16px',
   fontSize: 13,
+  fontWeight: 500,
   cursor: 'pointer',
+  boxShadow: '0 4px 14px rgba(124,108,255,0.32), inset 0 1px 0 rgba(255,255,255,0.12)',
+  transition: 'background var(--t-fast) var(--ease-out)',
 }

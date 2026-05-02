@@ -1,0 +1,223 @@
+Do a complete full-codebase audit of MuralDesk.
+
+This is a READ-ONLY audit first.
+
+Do not modify code.
+Do not install packages.
+Do not refactor.
+Do not fix anything yet.
+Do not touch storage/persistence.
+
+Goal:
+Find anything and everything that could break the buildathon demo, desktop app, web/PWA app, security, persistence, UX, release build, or future maintainability.
+
+Audit all of these areas:
+
+1. Product / UX audit
+- Does MuralDesk still match the vision: transparent local-first desktop mural layer?
+- Does it feel like pinned objects on desktop, not an app dashboard?
+- Is Electron Desktop Mode clean?
+- Is toolbar behavior usable?
+- Is toolbar too hard to access?
+- Are item hover controls clear?
+- Are duplicate buttons confusing?
+- Is sample board clean?
+- Is empty state correct for web vs Electron?
+- Are there any app-like panels that should not exist in Desktop Mode?
+
+2. Electron desktop audit
+- Transparent frameless window
+- Click-through empty areas
+- Toolbar and cards still interactive
+- Desktop Mode full-display overlay
+- Exit Desktop Mode restores normal window bounds
+- Normal window geometry is not overwritten by overlay bounds
+- Tray behavior if present
+- Close/minimize behavior
+- Window dragging
+- Custom window controls
+- Fullscreen/Desktop button duplication
+- Startup behavior if mural.desktopMode is true
+- Multi-monitor limitations
+- Windows-specific risks
+- macOS/Linux limitations
+
+3. Drag/resize/canvas audit
+- Can items move across the full current display in Desktop Mode?
+- Are items accidentally bounded by a smaller wrapper?
+- Does react-rnd use the correct parent?
+- Can items get lost off-screen?
+- Do resize handles work?
+- Do hover controls interfere with resize?
+- Does click-through break drag?
+- Does fast dragging break?
+- Does lock/unlock behave correctly?
+- Does duplicate preserve metadata?
+
+4. Storage/persistence audit
+- localStorage layout persistence
+- IndexedDB media blob persistence
+- Uploaded image persistence
+- Uploaded video persistence
+- YouTube link persistence
+- Direct image/video URL persistence
+- Note persistence
+- Delete persistence
+- Duplicate persistence
+- Import/export persistence
+- Backup import/export if implemented
+- Object URL cleanup/revocation
+- Orphaned IndexedDB blob cleanup
+- StrictMode double-mount issues
+- Corrupt localStorage recovery
+- Browser quota risks
+
+5. Link/embed/security audit
+- YouTube URL parsing
+- youtube-nocookie embed safety
+- Direct video URL detection
+- Direct image URL detection
+- Normal web link behavior
+- Unsafe URL blocking:
+  - javascript:
+  - data:
+  - file:
+  - mailto:
+  - vbscript:
+- Import path sanitization
+- Export/import link sanitization
+- iframe pointer-events / interact mode
+- Cross-origin iframe behavior
+- External links opening in browser
+- No arbitrary navigation inside Electron
+
+6. Electron security audit
+- contextIsolation
+- sandbox
+- nodeIntegration off
+- preload bridge surface
+- IPC sender scoping
+- IPC argument sanitization
+- setIgnoreMouseEvents safety
+- window close/minimize IPC safety
+- desktop/fullscreen IPC safety
+- tray IPC safety if present
+- will-navigate blocking
+- setWindowOpenHandler behavior
+- external link handling
+- no Node primitives leaked to renderer
+- no remote module usage
+- no unsafe eval
+
+7. PWA/web audit
+- Web/PWA still works normally
+- Electron-only behavior hidden on web
+- Fullscreen button still exists on web
+- Desktop button hidden on web
+- Service worker does not break dev
+- Service worker does not run under file:// Electron
+- Manifest valid
+- Icons valid
+- Installability
+- Offline shell caching
+- Cache versioning
+- Cache cleanup does not delete unrelated app caches
+
+8. Build/release audit
+Run and report:
+- npm run build:web
+- node --check electron/main.cjs
+- node --check electron/preload.cjs
+
+Also inspect:
+- package.json scripts
+- electron-builder config
+- Windows installer output path
+- build:desktop and build:desktop:dir
+- dev:web / dev:renderer / dev:desktop ports
+- Replit limitation documentation
+- npm audit output, but do not auto-fix
+- bundle size
+- missing assets
+- missing app icon
+- missing tray icon
+- release docs accuracy
+
+9. Performance audit
+- Bundle size
+- Unnecessary deps
+- Unused imports
+- Heavy re-renders
+- Mousemove click-through hook performance
+- IPC spam risk
+- Object URL memory leaks
+- Large video backup risks
+- localStorage size risks
+- IndexedDB quota risks
+- Drag/resize performance
+
+10. Accessibility audit
+- Keyboard shortcuts
+- Esc behavior
+- Button aria-labels
+- Dialog focus
+- Toolbar keyboard access
+- Color contrast
+- Icon-only buttons have labels
+- Note editing usability
+- Focus traps if any
+- Screen reader issues if obvious
+
+11. Docs/repo audit
+- README accuracy
+- BUILDATHON_SUBMISSION.md accuracy
+- docs/SCREENSHOTS.md accuracy
+- docs/RELEASE.md if present
+- AGENTS.md still matches current project
+- PRODUCT.md / ROADMAP.md accuracy
+- Any fake claims
+- Any claim that says wallpaper/multi-monitor if not true
+- Instructions match package scripts
+- GitHub repo polish
+- License present
+- .gitignore correct
+
+12. Buildathon readiness audit
+- Can I demo in 60 seconds?
+- What are the 5 strongest demo moments?
+- What can fail live?
+- What should I avoid showing?
+- What exact Windows test should I run before recording?
+- What exact final pitch should I use?
+
+Output format:
+Use this structure:
+
+A. Executive verdict
+- PASS / PASS WITH WARNINGS / FAIL
+
+B. Top 10 risks ranked
+For each:
+- severity: HIGH / MEDIUM / LOW
+- area
+- exact file(s)
+- why it matters
+- whether it blocks buildathon demo
+- recommended fix
+
+C. Full checklist by category
+Use ✅ / ⚠️ / ❌
+
+D. Commands run and results
+
+E. Files reviewed
+
+F. Do-not-touch list
+List files/areas that should not be changed unless absolutely necessary.
+
+G. Recommended patch order
+Only if fixes are needed.
+
+Important:
+If you find HIGH severity issues, do not fix them yet. Report first.
+If you find only LOW polish issues, say we should stop coding and submit.
