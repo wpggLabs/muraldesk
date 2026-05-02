@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { classifyLink } from '../lib/linkType'
 
 // Renders one of four variants depending on the URL:
@@ -28,7 +28,39 @@ export default function LinkCard({ item, hovered, onUpdate }) {
 
 // ----- YouTube ---------------------------------------------------------------
 
+// YouTube cards have two modes:
+//   - Default (idle): iframe is `pointer-events: none` so the whole card
+//     is draggable from anywhere. The video autoplays muted and looped.
+//   - Interact: clicking the hover-only "Interact" button flips the iframe
+//     to `pointer-events: auto`, letting the user use YouTube's native
+//     player UI. To still allow moving the card in this mode, a slim drag
+//     strip appears at the top of the card (a plain <div>, NOT marked
+//     `.no-drag`, so react-rnd treats it as a drag origin).
+//
+// Interact state is intentionally per-card *transient* React state: it
+// resets to off on reload, so we don't have to migrate persisted layouts
+// or worry about stale interact flags in exported JSON.
 function YouTubeEmbed({ item, info, hovered }) {
+  const [interact, setInteract] = useState(false)
+
+  // Esc exits interact mode while the parent window has focus. If the
+  // user has focused the iframe itself (e.g. clicked YouTube's play
+  // button), the cross-origin iframe captures keypresses and this won't
+  // fire — they can fall back to the visible "Exit interact" button.
+  useEffect(() => {
+    if (!interact) return
+    function onKey(e) {
+      if (e.key === 'Escape') setInteract(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [interact])
+
+  // Show the bottom-left chrome whenever the card is hovered OR currently
+  // interacting (so the Exit button stays reachable even if the hover
+  // state is lost while the mouse is over the iframe).
+  const showChrome = hovered || interact
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', background: '#000' }}>
       <iframe
@@ -41,39 +73,88 @@ function YouTubeEmbed({ item, info, hovered }) {
           height: '100%',
           border: 0,
           display: 'block',
-          // Iframe is purely visual ambient playback so the parent canvas
-          // can still receive drag events from anywhere on the card. To
-          // actually watch with sound, the user follows the hover-only
-          // "YouTube" link to the original page.
-          pointerEvents: 'none',
+          pointerEvents: interact ? 'auto' : 'none',
         }}
       />
-      <a
+
+      {/* Drag strip at top — only in interact mode. This is a plain div,
+          not in the BoardItem `cancel` selector, so mousedown bubbles up
+          to react-rnd and starts a drag. zIndex sits above the iframe but
+          below the mini-toolbar (z:20) and corner handles (z:25) so those
+          still win clicks at their respective regions. */}
+      {interact && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 26,
+            background: 'linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0))',
+            cursor: 'grab',
+            display: 'flex',
+            alignItems: 'center',
+            paddingLeft: 10,
+            color: 'rgba(255,255,255,0.85)',
+            fontSize: 10,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            zIndex: 18,
+            userSelect: 'none',
+          }}
+          title="Drag to move"
+        >
+          ⋮⋮ Drag
+        </div>
+      )}
+
+      {/* Bottom-left controls. Marked .no-drag so clicks here never start
+          a drag. zIndex above corner handles so they always win at the
+          bottom-left even when handles are visible. */}
+      <div
         className="no-drag"
         onMouseDown={(e) => e.stopPropagation()}
-        href={info.watchUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Open on YouTube"
         style={{
           position: 'absolute',
           bottom: 8,
           left: 8,
-          padding: '4px 8px',
-          background: 'rgba(0,0,0,0.7)',
-          color: '#fff',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 5,
-          fontSize: 11,
-          textDecoration: 'none',
-          opacity: hovered ? 1 : 0,
-          pointerEvents: hovered ? 'auto' : 'none',
-          transition: 'opacity 0.15s',
+          display: 'flex',
+          gap: 4,
           zIndex: 30,
+          opacity: showChrome ? 1 : 0,
+          pointerEvents: showChrome ? 'auto' : 'none',
+          transition: 'opacity 0.15s',
         }}
       >
-        ▶ YouTube
-      </a>
+        {interact ? (
+          <button
+            type="button"
+            onClick={() => setInteract(false)}
+            title="Exit interact mode (Esc)"
+            style={{ ...ytBtn, background: 'rgba(108,99,255,0.85)' }}
+          >
+            ✕ Exit interact
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setInteract(true)}
+            title="Click to interact with the player"
+            style={ytBtn}
+          >
+            ▶ Interact
+          </button>
+        )}
+        <a
+          href={info.watchUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open on YouTube"
+          style={{ ...ytBtn, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+        >
+          ↗
+        </a>
+      </div>
     </div>
   )
 }
@@ -272,4 +353,10 @@ const ctrlBtn = {
   padding: '3px 7px',
   fontSize: 11,
   cursor: 'pointer',
+}
+
+const ytBtn = {
+  ...ctrlBtn,
+  padding: '4px 9px',
+  fontWeight: 500,
 }
