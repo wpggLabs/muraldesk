@@ -53,8 +53,14 @@ src/
     LinkCard.jsx       — Smart link card. Picks one of four renderers via
                           `lib/linkType.js`:
                           * youtube → muted/looping `youtube-nocookie.com`
-                            iframe, `pointer-events:none` so drag still works,
-                            hover-only "Open on YouTube" escape link.
+                            iframe. Default `pointer-events:none` so drag still
+                            works. Hover shows a small "Interact" button; when
+                            toggled on, the iframe becomes `pointer-events:auto`
+                            (so the user can use the native YouTube player) and
+                            a slim drag strip appears at the top of the card so
+                            the item is still movable. Esc or the visible "Exit
+                            interact" button exits the mode. Interact state is
+                            transient React state — it is not persisted.
                           * video   → `<video>` with hover-only mute/loop
                             controls (mirrors uploaded VideoCard).
                           * image   → inline `<img>` with `pointer-events:none`.
