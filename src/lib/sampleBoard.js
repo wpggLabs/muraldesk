@@ -92,51 +92,154 @@ export function buildSampleItems(opts = {}) {
     ]
   }
 
+  // ----- Hand-arranged 3×3 mural at 1280×720 ---------------------------
+  //
+  // Column x's: 30 / 440 / 850 (380-wide cards, ~30px gutters).
+  // Row y's:    130 / 330 / 560 (clears the floating toolbar at the
+  //             top, leaves a 10px breather at the bottom).
+  //
+  // The grid intentionally mixes one note + one compact embed + one
+  // note across the top row so the eye lands on words first, then
+  // discovers the rich media in rows 2 and 3. Spotify's compact
+  // 100-px-tall track player is centered vertically in its 180-px
+  // row so it doesn't look stranded.
+  //
+  // Every URL below is a stable, canonical public reference
+  // (Wikimedia Commons sample · Google's Big Buck Bunny mirror ·
+  // Vimeo's classic "The Mountain" demo · Forss "Flickermood" on
+  // SoundCloud · Nirvana on Spotify · Chris Coyier on CodePen). The
+  // YouTube id is hard-coded into the link URL so the same
+  // classifyLink path the user would hit applies — no special-cased
+  // sample data shape.
+  //
+  // Z-ordering: each item is +1 above the previous so a freshly-
+  // dropped sample board has a sensible front-to-back order, and
+  // any new user item (which is added with `Date.now()` z-index)
+  // automatically lands on top.
+  const COL = { a: 30, b: 440, c: 850 }
+  const W = 380
+  const ZB = baseZ
+  const ox = offsetX
+  const oy = offsetY
+
   return [
+    // Row 1 — Welcome note (col A, h=180)
     {
       id: uuidv4(),
       type: 'note',
-      text: '👋 Welcome to MuralDesk\n\nA visual desk for ambient inspiration.\nPin images, looping videos, links, and notes.\n\nEverything stays on your machine.',
-      x: 80 + offsetX,
-      y: 80 + offsetY,
-      width: 280,
-      height: 200,
+      text: '👋 Welcome to MuralDesk\n\nA visual desk for ambient inspiration.\nPin images, videos, links, and notes —\neverything stays on your machine.',
+      x: COL.a + ox,
+      y: 130 + oy,
+      width: W,
+      height: 180,
       color: '#2a2a3a',
-      zIndex: baseZ + 1,
+      zIndex: ZB + 1,
     },
-    {
-      id: uuidv4(),
-      type: 'note',
-      text: '✨ Tips\n\n• Drag the top strip to move\n• Pull the bottom-right corner to resize\n• Hover for lock / duplicate / delete\n• Press Delete to remove the selected card\n• Press Esc to deselect',
-      x: 400 + offsetX,
-      y: 80 + offsetY,
-      width: 300,
-      height: 220,
-      color: '#2d2a1a',
-      zIndex: baseZ + 2,
-    },
-    {
-      id: uuidv4(),
-      type: 'image',
-      src: SAMPLE_IMAGE_SRC,
-      label: 'Sample image',
-      x: 80 + offsetX,
-      y: 320 + offsetY,
-      width: 320,
-      height: 220,
-      zIndex: baseZ + 3,
-    },
+    // Row 1 — Spotify (col B, compact track player, vertically centered in the 180-row)
     {
       id: uuidv4(),
       type: 'link',
-      url: 'https://en.wikipedia.org/wiki/Mood_board',
-      title: 'What is a mood board?',
-      description: 'Visual collections that capture aesthetic and creative direction.',
-      x: 420 + offsetX,
-      y: 340 + offsetY,
-      width: 280,
+      // Smells Like Teen Spirit — canonical, always-online demo track.
+      url: 'https://open.spotify.com/track/5ghIJDpPoe3CfHMGu71E6T',
+      title: 'Spotify track',
+      x: COL.b + ox,
+      y: 170 + oy,
+      width: W,
+      height: 100,
+      zIndex: ZB + 2,
+    },
+    // Row 1 — Local-first reassurance note (col C, h=180)
+    {
+      id: uuidv4(),
+      type: 'note',
+      text: '🔒 Local-first\n\n· No account\n· No cloud\n· No tracking\n\nYour board lives on this machine.',
+      x: COL.c + ox,
+      y: 130 + oy,
+      width: W,
       height: 180,
-      zIndex: baseZ + 4,
+      color: '#1a2a25',
+      zIndex: ZB + 3,
+    },
+
+    // Row 2 — YouTube (col A, h=210)
+    {
+      id: uuidv4(),
+      type: 'link',
+      // "Big Buck Bunny" official YouTube upload — public, always-online.
+      url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+      title: 'YouTube embed',
+      x: COL.a + ox,
+      y: 330 + oy,
+      width: W,
+      height: 210,
+      zIndex: ZB + 4,
+    },
+    // Row 2 — Vimeo (col B, h=210)
+    {
+      id: uuidv4(),
+      type: 'link',
+      // "The Mountain" by TSO Photography — Vimeo's classic public demo.
+      url: 'https://vimeo.com/22439234',
+      title: 'Vimeo embed',
+      x: COL.b + ox,
+      y: 330 + oy,
+      width: W,
+      height: 210,
+      zIndex: ZB + 5,
+    },
+    // Row 2 — Direct image URL link card (col C, h=210)
+    {
+      id: uuidv4(),
+      type: 'link',
+      // Wikimedia Commons — Hubble's "Pillars of Creation" thumbnail.
+      // Direct .jpg URL → LinkCard renders inline <img>.
+      url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/Pillars_2014_HST_WFC3-UVIS_full-res_denoised.jpg/640px-Pillars_2014_HST_WFC3-UVIS_full-res_denoised.jpg',
+      title: 'Direct image link',
+      x: COL.c + ox,
+      y: 330 + oy,
+      width: W,
+      height: 210,
+      zIndex: ZB + 6,
+    },
+
+    // Row 3 — SoundCloud (col A, h=150)
+    {
+      id: uuidv4(),
+      type: 'link',
+      // Forss — "Flickermood": canonical creative-commons SC track.
+      url: 'https://soundcloud.com/forss/flickermood',
+      title: 'SoundCloud embed',
+      x: COL.a + ox,
+      y: 560 + oy,
+      width: W,
+      height: 150,
+      zIndex: ZB + 7,
+    },
+    // Row 3 — Direct video URL link card (col B, h=150)
+    {
+      id: uuidv4(),
+      type: 'link',
+      // Google's public Big Buck Bunny mirror — stable .mp4 URL, no auth.
+      url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      title: 'Direct video link',
+      x: COL.b + ox,
+      y: 560 + oy,
+      width: W,
+      height: 150,
+      zIndex: ZB + 8,
+    },
+    // Row 3 — CodePen (col C, h=150)
+    {
+      id: uuidv4(),
+      type: 'link',
+      // Chris Coyier (CodePen co-founder) — small, stable demo pen.
+      url: 'https://codepen.io/chriscoyier/pen/RwKwoyZ',
+      title: 'CodePen embed',
+      x: COL.c + ox,
+      y: 560 + oy,
+      width: W,
+      height: 150,
+      zIndex: ZB + 9,
     },
   ]
 }
