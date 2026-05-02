@@ -27,7 +27,7 @@ export default function EmptyState({ onSampleBoard, onAddNote }) {
           width: 56,
           height: 56,
           borderRadius: 14,
-          background: 'linear-gradient(135deg, rgba(124,108,255,0.18), rgba(124,108,255,0.06))',
+          background: 'linear-gradient(135deg, rgba(var(--accent-rgb), 0.18), rgba(var(--accent-rgb), 0.06))',
           border: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
@@ -146,7 +146,7 @@ const primaryBtn = {
   fontWeight: 500,
   cursor: 'pointer',
   letterSpacing: 0.1,
-  boxShadow: '0 4px 14px rgba(124,108,255,0.32), inset 0 1px 0 rgba(255,255,255,0.12)',
+  boxShadow: '0 4px 14px rgba(var(--accent-rgb), 0.32), inset 0 1px 0 rgba(255,255,255,0.12)',
   transition: 'background var(--t-fast) var(--ease-out)',
 }
 

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useBoard } from './hooks/useBoard'
 import { useBoardView } from './hooks/useBoardView'
 import { useDesktopMode } from './hooks/useDesktopMode'
 import { useElectronClickThrough } from './hooks/useElectronClickThrough'
 import { useSnap } from './hooks/useSnap'
+import { useTheme } from './hooks/useTheme'
 import { buildSampleItems } from './lib/sampleBoard'
 import { defaultLinkSize } from './lib/linkType'
 import {
@@ -87,10 +88,35 @@ export default function App() {
     toggleFocusMode,
   } = useBoardView()
 
+  // Theme + accent. Owns its own `muraldesk-theme` localStorage key
+  // (independent of board / snap / view / IDB) and applies data-theme
+  // + data-accent on <html> synchronously before paint. Default is
+  // dark / purple so first paint matches the pre-theming look exactly.
+  // In Electron the existing data-electron rule keeps the root
+  // transparent regardless of theme, so neither light nor dark mode
+  // ever bleeds a full background into the transparent overlay.
+  const {
+    mode: themeMode,
+    accent: themeAccent,
+    cycleMode: cycleThemeMode,
+    cycleAccent: cycleThemeAccent,
+  } = useTheme()
+
   // Mark <html data-electron="true"> so src/index.css can paint the
   // root transparent in the Electron build. The web/PWA build never
-  // sets this attribute and keeps its dark canvas background.
-  useEffect(() => {
+  // sets this attribute and keeps its themed canvas background.
+  //
+  // useLayoutEffect (synchronous, before paint) — NOT useEffect — so
+  // this attribute is set on the same pre-paint pass as useTheme's
+  // data-theme / data-accent. Otherwise, an Electron cold-start with
+  // a saved 'light' theme would briefly paint a white body background
+  // (var(--bg) for light) before the post-paint useEffect could apply
+  // the !important transparent rule, producing a one-frame white flash
+  // over the user's desktop. Both layout effects flush in the same
+  // commit before browser paint, so the order between them is
+  // irrelevant — the transparent !important rule always wins from the
+  // first paint forward.
+  useLayoutEffect(() => {
     if (!isElectron) return
     document.documentElement.setAttribute('data-electron', 'true')
     return () => document.documentElement.removeAttribute('data-electron')
@@ -185,8 +211,11 @@ export default function App() {
   const handleAddNote = useCallback(() => {
     const w = 220
     const h = 180
+    // No `color` field → NoteCard falls back to var(--note-bg-default)
+    // so freshly-added notes follow the active theme. Existing notes
+    // keep whatever color was previously persisted.
     addItem('note', {
-      text: '', width: w, height: h, color: '#2a2a3a', ...spawnPosFor(w, h),
+      text: '', width: w, height: h, ...spawnPosFor(w, h),
     })
   }, [addItem, spawnPosFor])
 
@@ -198,8 +227,9 @@ export default function App() {
   const handleAddNoteCentered = useCallback(() => {
     const w = 220
     const h = 180
+    // See handleAddNote — same theme-aware default note color.
     addItem('note', {
-      text: '', width: w, height: h, color: '#2a2a3a',
+      text: '', width: w, height: h,
       ...spawnPosFor(w, h, { center: true }),
     })
   }, [addItem, spawnPosFor])
@@ -619,6 +649,10 @@ export default function App() {
         onCycleBoardOpacity={cycleBoardOpacity}
         focusMode={focusMode}
         onToggleFocusMode={toggleFocusMode}
+        themeMode={themeMode}
+        themeAccent={themeAccent}
+        onCycleThemeMode={cycleThemeMode}
+        onCycleThemeAccent={cycleThemeAccent}
         onMinimizeWindow={handleMinimize}
         onCloseWindow={handleClose}
         manualOverride={manualToolbarOverride}

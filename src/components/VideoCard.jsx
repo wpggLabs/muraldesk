@@ -63,7 +63,7 @@ export default function VideoCard({ item, onUpdate, hovered }) {
           onClick={() => onUpdate(item.id, { loop: !(item.loop !== false) })}
           style={{
             ...ctrlBtn,
-            background: item.loop !== false ? 'rgba(108,99,255,0.75)' : ctrlBtn.background,
+            background: item.loop !== false ? 'rgba(var(--accent-rgb), 0.75)' : ctrlBtn.background,
           }}
         >
           ↻

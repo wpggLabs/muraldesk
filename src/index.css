@@ -4,6 +4,18 @@
   padding: 0;
 }
 
+/*
+  Theme tokens.
+
+  The `:root` defaults below match the dark / purple look exactly as it
+  was before theming was added — so first paint, before useTheme's
+  layout effect runs, is byte-identical for users on default settings.
+
+  useTheme then sets data-theme / data-accent on <html>. Each combination
+  selectively overrides only the tokens that need to change; everything
+  else (geometry, motion, danger / success colors) inherits the :root
+  values.
+*/
 :root {
   /* Surfaces — deep slate, glass-friendly. */
   --bg: #0a0a0d;
@@ -21,11 +33,32 @@
   --text-muted: #8a8a9a;
   --text-dim: #5a5a6a;
 
-  /* Accent — electric violet, used for selection / active state only. */
-  --accent: #7c6cff;
+  /* Button surface tints (used for hover / idle backgrounds in the
+     toolbar and item hover-controls). Sits over the glass surfaces, so
+     a translucent white tint reads as a lift in dark mode. Light mode
+     redefines these with a black tint instead. */
+  --btn-hover: rgba(255, 255, 255, 0.07);
+  --btn-hover-strong: rgba(255, 255, 255, 0.14);
+  --btn-idle: rgba(255, 255, 255, 0.04);
+
+  /* Note default (used when item.color is unset — i.e. the note was
+     added after this feature shipped, see App.jsx handleAddNote). The
+     5 explicit color swatches in NoteCard.jsx are deliberately NOT
+     themed so a user's intentional swatch choice persists as-is. */
+  --note-bg-default: #2a2a3a;
+  --note-text-default: #f0f0f5;
+
+  /*
+    Accent — purple by default. The RGB triplet token lets any rgba()
+    inline style follow the accent: `rgba(var(--accent-rgb), 0.32)`.
+    --accent itself is computed from the triplet so we only have to
+    edit one source of truth per accent.
+  */
+  --accent-rgb: 124, 108, 255;
+  --accent: rgb(var(--accent-rgb));
   --accent-hover: #8e80ff;
-  --accent-soft: rgba(124, 108, 255, 0.18);
-  --accent-ring: rgba(124, 108, 255, 0.55);
+  --accent-soft: rgba(var(--accent-rgb), 0.18);
+  --accent-ring: rgba(var(--accent-rgb), 0.55);
 
   /* Semantic states. */
   --danger: #ff5757;
@@ -49,6 +82,43 @@
   --t-slow: 320ms;
 }
 
+/*
+  Light theme overrides. Only the surface / text / border / button /
+  note-default tokens flip — accent, danger, success, geometry, motion
+  all stay identical, so a vivid purple/blue/green/orange accent reads
+  the same on both backgrounds.
+*/
+html[data-theme="light"] {
+  --bg: #f3f3f7;
+  --surface: #ffffff;
+  --surface2: #eeeef2;
+  --surface-glass: rgba(255, 255, 255, 0.78);
+  --surface-glass-strong: rgba(255, 255, 255, 0.92);
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.18);
+
+  --text: #1a1a22;
+  --text-muted: #5c5c68;
+  --text-dim: #9a9aa6;
+
+  --btn-hover: rgba(0, 0, 0, 0.06);
+  --btn-hover-strong: rgba(0, 0, 0, 0.12);
+  --btn-idle: rgba(0, 0, 0, 0.03);
+
+  --note-bg-default: #fff8c8;
+  --note-text-default: #1a1a22;
+}
+
+/*
+  Accent overrides. Each rule swaps only the RGB triplet + the static
+  hex hover. Default (purple) lives in :root so absence of the
+  data-accent attribute resolves to the original look.
+*/
+html[data-accent="blue"]   { --accent-rgb: 78, 140, 255;  --accent-hover: #6ea2ff; }
+html[data-accent="green"]  { --accent-rgb: 62, 207, 142;  --accent-hover: #5fdca4; }
+html[data-accent="orange"] { --accent-rgb: 255, 138, 76;  --accent-hover: #ffa170; }
+
 html, body, #root {
   width: 100%;
   height: 100%;
@@ -67,9 +137,13 @@ html, body, #root {
   Electron transparent-overlay mode. The Electron main process creates
   the BrowserWindow with { transparent: true, frame: false }, so the
   renderer must also paint a fully-transparent root or the window will
-  still look like a solid dark panel. We toggle this via a data-attribute
+  still look like a solid panel. We toggle this via a data-attribute
   on <html> set by App.jsx when window.muraldesk.isElectron is true,
   which keeps the web/PWA build (no attribute) untouched.
+
+  This rule MUST win over the theme rules above (which would otherwise
+  paint --bg over the desktop): `!important` ensures even the light
+  theme's white --bg never bleeds into the transparent overlay.
 */
 html[data-electron="true"],
 html[data-electron="true"] body,
@@ -97,12 +171,12 @@ input, textarea {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--btn-hover);
   border-radius: 4px;
   transition: background var(--t-fast) var(--ease-out);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--btn-hover-strong);
 }
 
 /* Subtle focus ring for keyboard users — invisible to mouse users so it
