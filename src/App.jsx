@@ -1,11 +1,27 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useBoard } from './hooks/useBoard'
+import { buildSampleItems } from './lib/sampleBoard'
 import BoardItem from './components/BoardItem'
 import Toolbar from './components/Toolbar'
 import EmptyState from './components/EmptyState'
+import Footer from './components/Footer'
 
 export default function App() {
-  const { items, addItem, addMediaItem, updateItem, removeItem, bringToFront, clearBoard } = useBoard()
+  const {
+    items,
+    addItem,
+    addItems,
+    addMediaItem,
+    updateItem,
+    removeItem,
+    bringToFront,
+    clearBoard,
+    duplicateItem,
+    exportLayout,
+    importLayout,
+  } = useBoard()
+
+  const [selectedId, setSelectedId] = useState(null)
 
   const handleAddImage = useCallback((file) => {
     addMediaItem('image', file, { width: 300, height: 220 })
@@ -22,6 +38,100 @@ export default function App() {
   const handleAddLink = useCallback((url, title, description) => {
     addItem('link', { url, title, description, width: 280, height: 180 })
   }, [addItem])
+
+  const handleSampleBoard = useCallback(() => {
+    addItems(buildSampleItems())
+  }, [addItems])
+
+  const handleExport = useCallback(() => {
+    const data = exportLayout()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    a.download = `muraldesk-layout-${stamp}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+  }, [exportLayout])
+
+  const handleImport = useCallback((file) => {
+    const MAX_IMPORT_BYTES = 5 * 1024 * 1024 // 5 MB
+    const MAX_IMPORT_ITEMS = 500
+    if (file.size > MAX_IMPORT_BYTES) {
+      alert('Layout file is too large (5 MB max).')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = async () => {
+      try {
+        const parsed = JSON.parse(reader.result)
+        let incoming = Array.isArray(parsed) ? parsed : parsed?.items
+        if (!Array.isArray(incoming)) {
+          alert('That file does not look like a MuralDesk layout.')
+          return
+        }
+        if (incoming.length > MAX_IMPORT_ITEMS) {
+          alert(`Layout has too many items (${incoming.length}). Max is ${MAX_IMPORT_ITEMS}.`)
+          return
+        }
+        // Sanitize: drop unsafe protocols on link items so an imported
+        // javascript:/data: URL can never become a clickable href.
+        incoming = incoming.map((it) => {
+          if (it && it.type === 'link' && typeof it.url === 'string') {
+            try {
+              const proto = new URL(it.url).protocol
+              if (proto !== 'http:' && proto !== 'https:') {
+                return { ...it, url: '' }
+              }
+            } catch {
+              return { ...it, url: '' }
+            }
+          }
+          return it
+        })
+        const ok = items.length === 0
+          ? true
+          : confirm(`Replace your current board with ${incoming.length} imported item(s)?`)
+        if (!ok) return
+        await importLayout(incoming)
+        setSelectedId(null)
+      } catch (err) {
+        console.error(err)
+        alert('Could not read that layout file.')
+      }
+    }
+    reader.readAsText(file)
+  }, [items.length, importLayout])
+
+  // Keyboard shortcuts: Delete removes selected card, Escape deselects.
+  // Skip while typing in an input/textarea so note editing still works.
+  useEffect(() => {
+    function isEditableTarget(t) {
+      if (!t) return false
+      const tag = (t.tagName || '').toLowerCase()
+      return tag === 'input' || tag === 'textarea' || t.isContentEditable
+    }
+    function onKey(e) {
+      if (isEditableTarget(e.target)) return
+      if (e.key === 'Escape') {
+        setSelectedId(null)
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+        e.preventDefault()
+        removeItem(selectedId)
+        setSelectedId(null)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [selectedId, removeItem])
+
+  // Click on empty canvas deselects.
+  function handleCanvasMouseDown(e) {
+    if (e.target === e.currentTarget) setSelectedId(null)
+  }
 
   return (
     <div style={{
@@ -57,16 +167,30 @@ export default function App() {
         }}
       />
 
-      {items.length === 0 && <EmptyState />}
+      {items.length === 0 && (
+        <EmptyState
+          onSampleBoard={handleSampleBoard}
+          onAddNote={handleAddNote}
+        />
+      )}
 
-      <div style={{ position: 'absolute', inset: 0 }}>
+      <div
+        style={{ position: 'absolute', inset: 0 }}
+        onMouseDown={handleCanvasMouseDown}
+      >
         {items.map(item => (
           <BoardItem
             key={item.id}
             item={item}
+            selected={selectedId === item.id}
             onUpdate={updateItem}
-            onRemove={removeItem}
+            onRemove={(id) => {
+              removeItem(id)
+              if (selectedId === id) setSelectedId(null)
+            }}
             onFocus={bringToFront}
+            onSelect={setSelectedId}
+            onDuplicate={duplicateItem}
           />
         ))}
       </div>
@@ -76,8 +200,13 @@ export default function App() {
         onAddVideo={handleAddVideo}
         onAddNote={handleAddNote}
         onAddLink={handleAddLink}
-        onClear={clearBoard}
+        onClear={() => { clearBoard(); setSelectedId(null) }}
+        onSampleBoard={handleSampleBoard}
+        onExport={handleExport}
+        onImport={handleImport}
       />
+
+      <Footer />
     </div>
   )
 }

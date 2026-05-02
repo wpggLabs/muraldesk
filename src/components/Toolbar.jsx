@@ -1,8 +1,18 @@
 import { useRef, useState } from 'react'
 
-export default function Toolbar({ onAddImage, onAddVideo, onAddNote, onAddLink, onClear }) {
+export default function Toolbar({
+  onAddImage,
+  onAddVideo,
+  onAddNote,
+  onAddLink,
+  onClear,
+  onSampleBoard,
+  onExport,
+  onImport,
+}) {
   const imageInputRef = useRef(null)
   const videoInputRef = useRef(null)
+  const importInputRef = useRef(null)
   const [linkDialog, setLinkDialog] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkTitle, setLinkTitle] = useState('')
@@ -19,6 +29,13 @@ export default function Toolbar({ onAddImage, onAddVideo, onAddNote, onAddLink, 
     const file = e.target.files[0]
     if (!file) return
     onAddVideo(file)
+    e.target.value = ''
+  }
+
+  function handleImportFile(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    onImport && onImport(file)
     e.target.value = ''
   }
 
@@ -44,15 +61,24 @@ export default function Toolbar({ onAddImage, onAddVideo, onAddNote, onAddLink, 
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
+        gap: 4,
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 14,
         padding: '6px 10px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         backdropFilter: 'blur(12px)',
+        maxWidth: 'calc(100vw - 32px)',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
       }}>
-        <span style={{ color: 'var(--accent)', fontWeight: 700, fontSize: 13, marginRight: 8, letterSpacing: 0.5 }}>
+        <span style={{
+          color: 'var(--accent)',
+          fontWeight: 700,
+          fontSize: 13,
+          marginRight: 6,
+          letterSpacing: 0.5,
+        }}>
           MuralDesk
         </span>
 
@@ -61,7 +87,13 @@ export default function Toolbar({ onAddImage, onAddVideo, onAddNote, onAddLink, 
         <ToolBtn icon="📝" label="Note" onClick={onAddNote} />
         <ToolBtn icon="🔗" label="Link" onClick={() => setLinkDialog(true)} />
 
-        <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+        <Divider />
+
+        <ToolBtn icon="✨" label="Sample" onClick={onSampleBoard} />
+        <ToolBtn icon="↧" label="Export" onClick={onExport} />
+        <ToolBtn icon="↥" label="Import" onClick={() => importInputRef.current?.click()} />
+
+        <Divider />
 
         <ToolBtn icon="🗑" label="Clear" onClick={() => {
           if (confirm('Clear all items from the board?')) onClear()
@@ -69,6 +101,7 @@ export default function Toolbar({ onAddImage, onAddVideo, onAddNote, onAddLink, 
 
         <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageFile} />
         <input ref={videoInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleVideoFile} />
+        <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleImportFile} />
       </div>
 
       {linkDialog && (
@@ -102,6 +135,7 @@ export default function Toolbar({ onAddImage, onAddVideo, onAddNote, onAddLink, 
               onChange={e => setLinkUrl(e.target.value)}
               placeholder="URL (e.g. https://example.com)"
               required
+              autoFocus
               style={inputStyle}
             />
             <input
@@ -132,6 +166,10 @@ export default function Toolbar({ onAddImage, onAddVideo, onAddNote, onAddLink, 
   )
 }
 
+function Divider() {
+  return <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+}
+
 function ToolBtn({ icon, label, onClick, danger }) {
   const [hov, setHov] = useState(false)
   return (
@@ -152,6 +190,7 @@ function ToolBtn({ icon, label, onClick, danger }) {
         gap: 4,
         transition: 'all 0.15s',
         whiteSpace: 'nowrap',
+        cursor: 'pointer',
       }}
     >
       <span>{icon}</span>
