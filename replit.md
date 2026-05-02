@@ -27,6 +27,10 @@ src/
   lib/
     mediaStore.js      — IndexedDB wrapper for image/video blob persistence
     sampleBoard.js     — Builder for the demo "Sample board" (4 cards)
+    linkType.js        — Smart link classification: returns one of
+                          { kind: 'youtube' | 'video' | 'image' | 'web' | 'unsafe' }
+                          with a safe `youtube-nocookie.com/embed/{id}` URL for
+                          YouTube. Only http(s) URLs are ever marked safe.
   hooks/
     useBoard.js        — Board state: localStorage layout + IDB media hydration,
                           add/update/remove/duplicate/import/export
@@ -46,8 +50,18 @@ src/
                           Video has `pointer-events:none` so the whole video surface drags.
     NoteCard.jsx       — Editable text note. Color swatches top-left, hover-only.
                           Top padding (34px) leaves room for the floating mini-toolbar.
-    LinkCard.jsx       — URL link card with favicon. Open anchor marked `.no-drag`.
-                          Top padding (34px) leaves room for the mini-toolbar.
+    LinkCard.jsx       — Smart link card. Picks one of four renderers via
+                          `lib/linkType.js`:
+                          * youtube → muted/looping `youtube-nocookie.com`
+                            iframe, `pointer-events:none` so drag still works,
+                            hover-only "Open on YouTube" escape link.
+                          * video   → `<video>` with hover-only mute/loop
+                            controls (mirrors uploaded VideoCard).
+                          * image   → inline `<img>` with `pointer-events:none`.
+                          * web     → favicon + title + description + Open
+                            button (the original card design).
+                          * unsafe  → "Unsafe URL" non-clickable placeholder.
+                          Open anchor and hover controls all wear `.no-drag`.
     EmptyState.jsx     — Shown when board is empty: pitch + Sample CTA + Add note + keyboard hint.
 ```
 

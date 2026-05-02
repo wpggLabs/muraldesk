@@ -58,9 +58,30 @@ export default function Toolbar({
 
   function handleLinkSubmit(e) {
     e.preventDefault()
-    if (!linkUrl.trim()) return
     let url = linkUrl.trim()
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url
+    if (!url) return
+    // Reject explicit non-http(s) schemes outright (javascript:, data:, file:,
+    // mailto:, etc) so unsafe URLs never even enter the board state.
+    const schemeMatch = url.match(/^([a-z][a-z0-9+.-]*):/i)
+    if (schemeMatch) {
+      const scheme = schemeMatch[1].toLowerCase()
+      if (scheme !== 'http' && scheme !== 'https') {
+        alert('Only http and https URLs are allowed.')
+        return
+      }
+    } else {
+      url = 'https://' + url
+    }
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        alert('Only http and https URLs are allowed.')
+        return
+      }
+    } catch {
+      alert('That does not look like a valid URL.')
+      return
+    }
     onAddLink(url, linkTitle.trim(), linkDesc.trim())
     setLinkUrl('')
     setLinkTitle('')
