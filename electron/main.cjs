@@ -110,7 +110,12 @@ function createWindow() {
   win.once('ready-to-show', () => win.show())
 
   if (isDev) {
-    const devUrl = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5000'
+    // The desktop dev script (`npm run dev:desktop`) starts Vite on a
+    // dedicated, --strictPort 5173 instance and sets ELECTRON_RENDERER_URL
+    // explicitly, so this fallback only kicks in if someone launches
+    // `electron .` by hand. Web dev (port 5000) is reserved for the
+    // Replit preview / browser target.
+    const devUrl = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173'
     win.loadURL(devUrl)
   } else {
     win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
@@ -164,9 +169,9 @@ function createWindow() {
   // `http://localhost:5000.evil.com` cannot masquerade as the dev server.
   const devOrigin = (() => {
     try {
-      return new URL(process.env.ELECTRON_RENDERER_URL || 'http://localhost:5000').origin
+      return new URL(process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173').origin
     } catch {
-      return 'http://localhost:5000'
+      return 'http://localhost:5173'
     }
   })()
   win.webContents.on('will-navigate', (event, url) => {
