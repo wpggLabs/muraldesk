@@ -112,16 +112,38 @@ export function useDesktopMode() {
   // process. `bridge.isFullscreen()` returns `inOverlayDisplay` (the
   // single source of truth for Desktop Mode); `onFullscreenChange`
   // fires when enterOverlayDisplay / exitOverlayDisplay run.
+  //
+  // We mirror BOTH directions of the overlay flip into desktopMode +
+  // its localStorage so the toolbar's "Desktop" pill always reflects
+  // reality. Two cases this matters in practice:
+  //   1. Main autonomously enters overlay on launch because the user
+  //      enabled the "Start in Desktop Mode" startup option in the
+  //      tray menu (see electron/main.cjs ready-to-show). Without
+  //      mirroring, the toolbar would show "Desktop" (not active)
+  //      while we're actually in overlay, until the user toggles once.
+  //   2. Symmetric exit case (existing behavior, kept here): some
+  //      future programmatic exit path (close while in overlay, etc)
+  //      should also reset desktopMode + localStorage.
+  // The initial `bridge.isFullscreen()` query mirrors the same way so
+  // the case where the event fires before the renderer's listener
+  // attaches (timing race on launch) is also covered.
   useEffect(() => {
     if (!bridge) return
     let mounted = true
-    bridge.isFullscreen().then((v) => { if (mounted) setIsFullscreen(!!v) }).catch(() => {})
+    bridge.isFullscreen().then((v) => {
+      if (!mounted) return
+      setIsFullscreen(!!v)
+      if (v) {
+        setDesktopModeState(true)
+        writeStoredDesktopMode(true)
+      }
+    }).catch(() => {})
     const off = bridge.onFullscreenChange((v) => {
       setIsFullscreen(!!v)
-      // If overlay mode was exited (from any path — toolbar button,
-      // toggle, or future programmatic exit), keep desktopMode in
-      // sync so the toolbar's toggle reflects reality.
-      if (!v) {
+      if (v) {
+        setDesktopModeState(true)
+        writeStoredDesktopMode(true)
+      } else {
         setDesktopModeState(false)
         writeStoredDesktopMode(false)
       }
