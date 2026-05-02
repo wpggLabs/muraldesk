@@ -1,18 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MuralDesk">
+  <!--
+    MuralDesk app icon.
+    Concept: dark rounded square (matches the app's #0f0f10 surface)
+    with a small mural of three pinned cards. The middle card is the
+    purple accent (#6c63ff, the same purple used by the app's accent
+    CSS token), establishing brand recognition without relying on
+    text. Kept intentionally simple so it stays legible at 16x16 in
+    the Windows tray and as a browser tab favicon.
+    (Note: XML comments cannot contain a double-hyphen.)
+  -->
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#6c63ff"/>
-      <stop offset="60%" stop-color="#ff6cb6"/>
-      <stop offset="100%" stop-color="#3ecf8e"/>
+    <linearGradient id="md-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c1c20"/>
+      <stop offset="100%" stop-color="#0f0f10"/>
     </linearGradient>
-    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.25"/>
-    </filter>
+    <linearGradient id="md-accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8a82ff"/>
+      <stop offset="100%" stop-color="#6c63ff"/>
+    </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <g filter="url(#card-shadow)">
-    <rect x="98" y="138" width="148" height="190" rx="14" fill="#ffffff" opacity="0.95"/>
-    <rect x="270" y="108" width="160" height="118" rx="14" fill="#ffffff" opacity="0.88" transform="rotate(7 350 167)"/>
-    <rect x="170" y="290" width="200" height="118" rx="14" fill="#ffffff" opacity="0.92" transform="rotate(-5 270 349)"/>
+
+  <!-- Dark rounded square background -->
+  <rect width="512" height="512" rx="96" ry="96" fill="url(#md-bg)"/>
+
+  <!-- Subtle inner edge so the icon retains a defined silhouette
+       on light backgrounds (Windows light theme, macOS Finder). -->
+  <rect x="3" y="3" width="506" height="506" rx="93" ry="93"
+        fill="none" stroke="#2a2a30" stroke-width="2"/>
+
+  <!-- Three cards, slightly overlapping. Drawn back-to-front:
+       1) muted gray card tilted left
+       2) PURPLE accent card tilted right (the brand mark)
+       3) off-white front card centered with a slight tilt -->
+  <g>
+    <rect x="96"  y="170" width="180" height="208" rx="20"
+          fill="#2e2e34" transform="rotate(-7 186 274)"/>
+    <rect x="220" y="120" width="190" height="150" rx="20"
+          fill="url(#md-accent)" transform="rotate(7 315 195)"/>
+    <rect x="156" y="266" width="216" height="132" rx="20"
+          fill="#f2f2f4" transform="rotate(-3 264 332)"/>
   </g>
 </svg>

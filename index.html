@@ -9,8 +9,16 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <meta name="theme-color" content="#0f0f10" />
 
+    <!-- Branded icon set. SVG is the source of truth (browsers that
+         support it render crisply at any DPI); PNG fallbacks cover
+         older browsers and Apple's touch-icon requirements. The .ico
+         is the standard favicon for older browsers and the Windows
+         taskbar pinned-tab. -->
     <link rel="icon" type="image/svg+xml" href="icon.svg" />
-    <link rel="apple-touch-icon" href="icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
     <link rel="mask-icon" href="icon.svg" color="#6c63ff" />
 
     <meta name="apple-mobile-web-app-capable" content="yes" />
