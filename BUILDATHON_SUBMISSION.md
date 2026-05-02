@@ -150,7 +150,7 @@ I'd rather be judged on what the project actually is than on what a marketing pa
 
 ## Links
 
-- **GitHub:** _(placeholder — to be filled in before submission)_
+- **GitHub:** https://github.com/wpggLabs/muraldesk
 - **Demo:** _(placeholder — live PWA URL to be filled in before submission)_
 - **Video:** _(placeholder — 90-second walkthrough following the demo script above, to be recorded and uploaded before submission)_
 - **Windows build:** _(placeholder — `MuralDesk-Setup-0.1.0.exe` from `release/` after running `npm run build:desktop`, to be uploaded before submission)_
