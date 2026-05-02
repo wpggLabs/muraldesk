@@ -18,10 +18,19 @@ export default function BoardItem({
   onFocus,
   onSelect,
   onDuplicate,
+  onHoverChange,
 }) {
   const [hovered, setHovered] = useState(false)
   const locked = !!item.locked
   const showControls = hovered || selected
+
+  // Notify the parent (App) that this card's hover state changed so
+  // the floating toolbar can reveal itself when any card is hovered
+  // in Electron transparent-overlay mode.
+  function notifyHover(next) {
+    setHovered(next)
+    if (onHoverChange) onHoverChange(item.id, next)
+  }
 
   function handleDragStop(e, d) {
     onUpdate(item.id, { x: d.x, y: d.y })
@@ -91,8 +100,8 @@ export default function BoardItem({
         onFocus(item.id)
         onSelect && onSelect(item.id)
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => notifyHover(true)}
+      onMouseLeave={() => notifyHover(false)}
       style={{ zIndex: item.zIndex }}
       minWidth={120}
       minHeight={80}

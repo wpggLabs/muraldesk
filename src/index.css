@@ -29,6 +29,20 @@ html, body, #root {
   font-size: 14px;
 }
 
+/*
+  Electron transparent-overlay mode. The Electron main process creates
+  the BrowserWindow with { transparent: true, frame: false }, so the
+  renderer must also paint a fully-transparent root or the window will
+  still look like a solid dark panel. We toggle this via a data-attribute
+  on <html> set by App.jsx when window.muraldesk.isElectron is true,
+  which keeps the web/PWA build (no attribute) untouched.
+*/
+html[data-electron="true"],
+html[data-electron="true"] body,
+html[data-electron="true"] #root {
+  background: transparent !important;
+}
+
 button {
   cursor: pointer;
   border: none;

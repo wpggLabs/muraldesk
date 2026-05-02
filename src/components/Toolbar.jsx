@@ -14,6 +14,10 @@ export default function Toolbar({
   isElectron = false,
   desktopMode = false,
   onToggleDesktopMode,
+  hasItems = false,
+  anyItemHovered = false,
+  onMinimizeWindow,
+  onCloseWindow,
 }) {
   const imageInputRef = useRef(null)
   const videoInputRef = useRef(null)
@@ -23,28 +27,52 @@ export default function Toolbar({
   const [linkTitle, setLinkTitle] = useState('')
   const [linkDesc, setLinkDesc] = useState('')
 
-  // Auto-dim toolbar when the mouse drifts away from the top of the
-  // canvas, so the workspace feels like a clean mural rather than an app.
-  // Toolbar stays fully visible while hovered, while a dialog is open,
-  // or until the first mouse-move arrives.
-  //
-  // In Desktop Canvas Mode we go further: the toolbar fully hides
-  // (opacity 0 + pointer-events: none) unless the cursor is at the very
-  // top of the screen, the toolbar itself is hovered, or a dialog is
-  // open. This is what makes the canvas feel like a desktop mural layer.
+  // Visibility behavior — three layered modes:
+  //   1. Web build (default):
+  //        Toolbar is always present, dims when the cursor drifts away
+  //        from the top of the canvas. Hover or open dialog re-brightens.
+  //   2. Desktop Canvas Mode (Electron, OS fullscreen):
+  //        Same reveal-on-top behavior as web, but when not visible the
+  //        toolbar fully hides (opacity 0 + pointer-events: none) and
+  //        slides up — the canvas should feel like a desktop mural.
+  //   3. Electron transparent-overlay mode (always-on for the Electron
+  //      build per the user's spec):
+  //        - Empty board → keep toolbar visible so the user can add
+  //          their first item.
+  //        - Once items exist → hide unless the cursor is near the top,
+  //          the toolbar is hovered, a dialog is open, OR the user is
+  //          hovering any pinned item. Window stays visually transparent.
   const [nearTop, setNearTop] = useState(true)
   const [hovered, setHovered] = useState(false)
   useEffect(() => {
-    const REVEAL_PX = desktopMode ? 24 : 110
+    // Tighter reveal zone in immersive modes so a stray mouse near the
+    // top doesn't flash the toolbar back on.
+    const REVEAL_PX = (desktopMode || isElectron) ? 24 : 110
     function onMove(e) {
       setNearTop(e.clientY < REVEAL_PX)
     }
     window.addEventListener('mousemove', onMove)
     return () => window.removeEventListener('mousemove', onMove)
-  }, [desktopMode])
-  const visible = nearTop || hovered || linkDialog
+  }, [desktopMode, isElectron])
+
+  // Empty board in Electron → force-show so the user has a visible
+  // entry point to add their first item.
+  const forceShow = isElectron && !hasItems
+
+  // Reveal triggers (in priority order). `anyItemHovered` only counts
+  // in Electron mode — on the web build the toolbar is always present
+  // so we don't need this signal to re-show it.
+  const visible = forceShow
+    || nearTop
+    || hovered
+    || linkDialog
+    || (isElectron && anyItemHovered)
+
   const dim = !visible
-  const fullyHidden = desktopMode && !visible
+  // Both desktopMode and Electron-overlay mode fully hide the toolbar
+  // when not visible (instead of just dimming it). On the web build it
+  // stays present-but-dim, matching the original behavior.
+  const fullyHidden = (desktopMode || isElectron) && !visible
 
   function handleImageFile(e) {
     const file = e.target.files[0]
@@ -127,6 +155,11 @@ export default function Toolbar({
           pointerEvents: fullyHidden ? 'none' : 'auto',
           transform: fullyHidden ? 'translateX(-50%) translateY(-12px)' : 'translateX(-50%)',
           transition: 'opacity 0.25s ease, transform 0.25s ease',
+          // In Electron the OS frame is gone, so the toolbar pill doubles
+          // as the window's drag handle. Buttons inside opt out of the
+          // drag region with WebkitAppRegion: 'no-drag' (see PillBtn).
+          // No-op on the web build (the property is ignored by browsers).
+          WebkitAppRegion: isElectron ? 'drag' : undefined,
         }}
       >
         <span
@@ -177,6 +210,25 @@ export default function Toolbar({
           onClick={() => { if (confirm('Clear all items from the board?')) onClear() }}
           danger
         />
+
+        {isElectron && (
+          <>
+            <Divider />
+            <PillBtn
+              icon="—"
+              label="Minimize"
+              compact
+              onClick={() => onMinimizeWindow && onMinimizeWindow()}
+            />
+            <PillBtn
+              icon="✕"
+              label="Close"
+              compact
+              onClick={() => onCloseWindow && onCloseWindow()}
+              danger
+            />
+          </>
+        )}
 
         <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageFile} />
         <input ref={videoInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleVideoFile} />
@@ -262,7 +314,7 @@ function Divider() {
   )
 }
 
-function PillBtn({ icon, label, onClick, danger, active }) {
+function PillBtn({ icon, label, onClick, danger, active, compact }) {
   const [hov, setHov] = useState(false)
   const bg = active
     ? 'rgba(108,99,255,0.22)'
@@ -286,18 +338,23 @@ function PillBtn({ icon, label, onClick, danger, active }) {
         color,
         border: 'none',
         borderRadius: 999,
-        padding: '4px 10px',
+        padding: compact ? '4px 8px' : '4px 10px',
         fontSize: 13,
         display: 'flex',
         alignItems: 'center',
-        gap: 5,
+        gap: compact ? 0 : 5,
         transition: 'all 0.12s',
         whiteSpace: 'nowrap',
         cursor: 'pointer',
+        // Opt this clickable button OUT of the toolbar's window-drag
+        // region. Without this, in the Electron frameless build the
+        // OS would consume the click as a window-drag and the button
+        // would never fire. No-op on the web build.
+        WebkitAppRegion: 'no-drag',
       }}
     >
       <span style={{ fontSize: 13, lineHeight: 1 }}>{icon}</span>
-      <span style={{ fontSize: 12 }}>{label}</span>
+      {!compact && <span style={{ fontSize: 12 }}>{label}</span>}
     </button>
   )
 }

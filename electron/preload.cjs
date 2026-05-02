@@ -30,4 +30,9 @@ contextBridge.exposeInMainWorld('muraldesk', {
     ipcRenderer.on(FULLSCREEN_CHANNEL, handler)
     return () => ipcRenderer.removeListener(FULLSCREEN_CHANNEL, handler)
   },
+  // Frameless-window controls. With `frame: false` the OS chrome is gone,
+  // so the renderer needs an explicit way to minimize / close. These are
+  // the only IPC channels that can mutate window state besides fullscreen.
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
 })

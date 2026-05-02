@@ -83,6 +83,25 @@ let mainWindow = null
 function createWindow() {
   const stored = clampToDisplays(loadWindowState())
 
+  // Transparent overlay window:
+  //   - `transparent: true` makes the BrowserWindow's background see-through
+  //     (the renderer's html/body/#root must also be transparent — see
+  //     `[data-electron="true"]` rules in src/index.css).
+  //   - `frame: false` removes the OS title bar / chrome so the only
+  //     visible thing is the floating toolbar pill and pinned items.
+  //   - `hasShadow: false` removes the OS-level drop shadow that would
+  //     otherwise outline the (now-invisible) window rectangle.
+  //   - `backgroundColor: '#00000000'` is a fully-transparent ARGB color;
+  //     Electron requires this to be transparent (or omitted) when the
+  //     window itself is `transparent: true`.
+  // Platform notes:
+  //   - Windows 10/11: works; window is still resizable from the edges
+  //     (no visible cursor change because the frame is gone).
+  //   - macOS: works; we draw our own close/minimize buttons in the
+  //     toolbar instead of the standard traffic-lights.
+  //   - Linux: depends on the compositor — most modern WMs (GNOME,
+  //     KDE) render transparency correctly; tiling WMs without a
+  //     compositor will fall back to opaque.
   const win = new BrowserWindow({
     width: stored.width,
     height: stored.height,
@@ -90,7 +109,10 @@ function createWindow() {
     y: stored.y,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#0f0f10',
+    transparent: true,
+    frame: false,
+    hasShadow: false,
+    backgroundColor: '#00000000',
     title: 'MuralDesk',
     autoHideMenuBar: true,
     show: false,
@@ -213,6 +235,22 @@ ipcMain.handle('desktop:is-fullscreen', (_event) => {
   const win = BrowserWindow.fromWebContents(_event.sender)
   if (!win || win.isDestroyed()) return false
   return win.isFullScreen()
+})
+
+// ---- IPC: window controls (frameless mode needs explicit min/close) -------
+
+ipcMain.handle('window:minimize', (_event) => {
+  const win = BrowserWindow.fromWebContents(_event.sender)
+  if (!win || win.isDestroyed()) return false
+  win.minimize()
+  return true
+})
+
+ipcMain.handle('window:close', (_event) => {
+  const win = BrowserWindow.fromWebContents(_event.sender)
+  if (!win || win.isDestroyed()) return false
+  win.close()
+  return true
 })
 
 // ---- App lifecycle ---------------------------------------------------------
