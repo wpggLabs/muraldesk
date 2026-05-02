@@ -40,6 +40,164 @@ let tray = null
 let isQuitting = false
 let trayMenuRefresh = null
 
+// ---- Startup settings ------------------------------------------------------
+//
+// Three Electron-only preferences exposed via the tray menu's Startup
+// submenu (no IPC surface — the renderer never reads or writes these,
+// keeping the bridge narrow per spec):
+//
+//   - launchOnStartup    → app.setLoginItemSettings({ openAtLogin })
+//   - startMinimized     → keep the window hidden after launch (tray
+//                          icon is the only affordance until user
+//                          clicks it). Requires a live tray; if tray
+//                          creation failed we fall back to showing
+//                          normally so the user is never stranded.
+//   - startInDesktopMode → call enterOverlayDisplay() in ready-to-show
+//                          BEFORE win.show() so the user sees the
+//                          overlay-sized window directly (no flash
+//                          of normal-size first).
+//
+// Persisted as a sibling of window-state.json in userData. Best-effort
+// I/O: a corrupt / unreadable file falls back to all-false defaults
+// rather than crashing the launch path.
+//
+// `startupSettings` is module-scoped because:
+//   - the IPC handlers (currently none, kept for future use) and the
+//     tray menu click handlers both need read+write access without
+//     juggling closure refs;
+//   - createWindow's ready-to-show hook reads it to decide whether to
+//     enter overlay / hide on launch;
+//   - app.whenReady reads it to sync the OS-level login-item state.
+//
+// `startupHideActive` distinguishes "we're still in the initial launch
+// tick and the user asked to start hidden" from "the user has explicitly
+// surfaced the window since". macOS fires `activate` on initial launch
+// (in addition to dock-clicks while running), and the default activate
+// handler calls showMainWindow() which would defeat startMinimized.
+// The flag prevents that. It is set PRE-EMPTIVELY in app.whenReady
+// (before createWindow / tray creation) — not in ready-to-show — so
+// that an activate event arriving between whenReady and ready-to-show
+// (the precise window where the macOS race lives) is also caught.
+// It clears on any explicit show (tray click, IPC, future surface)
+// so subsequent activates behave normally, and ready-to-show clears
+// it as a fallback if tray creation ended up failing (so a no-tray
+// user is never stranded with an invisible window).
+
+const STARTUP_FILE = path.join(app.getPath('userData'), 'startup-settings.json')
+const DEFAULT_STARTUP = Object.freeze({
+  launchOnStartup: false,
+  startMinimized: false,
+  startInDesktopMode: false,
+})
+
+let startupSettings = { ...DEFAULT_STARTUP }
+let startupHideActive = false
+
+function loadStartupSettings() {
+  try {
+    const raw = fs.readFileSync(STARTUP_FILE, 'utf8')
+    const parsed = JSON.parse(raw)
+    if (typeof parsed !== 'object' || !parsed) return { ...DEFAULT_STARTUP }
+    // Strict boolean validation: only the literals `true`/`false` are
+    // accepted. Truthy non-boolean values like `'false'` (string), `1`,
+    // `{}` would all coerce to `true` under `!!`, which would silently
+    // promote a corrupted file into "everything enabled" — most
+    // dangerous for `launchOnStartup` (registers a real OS login
+    // item). Falling back to the default is safer and consistent
+    // with the spec's "store preferences safely" requirement.
+    return {
+      launchOnStartup: typeof parsed.launchOnStartup === 'boolean'
+        ? parsed.launchOnStartup
+        : DEFAULT_STARTUP.launchOnStartup,
+      startMinimized: typeof parsed.startMinimized === 'boolean'
+        ? parsed.startMinimized
+        : DEFAULT_STARTUP.startMinimized,
+      startInDesktopMode: typeof parsed.startInDesktopMode === 'boolean'
+        ? parsed.startInDesktopMode
+        : DEFAULT_STARTUP.startInDesktopMode,
+    }
+  } catch {
+    return { ...DEFAULT_STARTUP }
+  }
+}
+
+function saveStartupSettings(s) {
+  try {
+    fs.mkdirSync(path.dirname(STARTUP_FILE), { recursive: true })
+    fs.writeFileSync(STARTUP_FILE, JSON.stringify(s), 'utf8')
+  } catch {
+    // Persistence is best-effort. Failing here must not crash the app.
+  }
+}
+
+// `app.setLoginItemSettings` is supported on Windows + macOS. On Linux
+// the convention is an XDG `.desktop` autostart file (typically
+// ~/.config/autostart/), which Electron does not provide a built-in
+// helper for. Writing one ourselves correctly across distros (XDG
+// paths, snap/flatpak sandboxing, CLI escape rules, dev vs packaged
+// binary) is fragile, so we report the capability as unsupported on
+// Linux and the tray menu shows the item as disabled with an
+// "(unsupported)" suffix. The user's data is unaffected: the toggle
+// persists in startup-settings.json and would re-activate if a future
+// build adds Linux autostart support.
+//
+// Dev builds (Electron CLI) are also reported unsupported because
+// setLoginItemSettings would register the generic `electron` binary
+// itself — running it on next login would just open a blank Electron
+// window, not MuralDesk. Packaging produces a real binary that this
+// API can target meaningfully, so the capability flips to true once
+// the user runs the packaged build.
+function isLaunchOnStartupSupported() {
+  if (isDev) return false
+  return process.platform === 'win32' || process.platform === 'darwin'
+}
+
+function applyLoginItemSettings(on) {
+  if (!isLaunchOnStartupSupported()) return false
+  try {
+    app.setLoginItemSettings({ openAtLogin: !!on })
+    return true
+  } catch (err) {
+    console.warn('MuralDesk: setLoginItemSettings failed.', err)
+    return false
+  }
+}
+
+// Apply a partial patch to startupSettings: validate each field as a
+// boolean (drop unknown fields and non-boolean values), persist on
+// change, sync OS-level login-item state if launchOnStartup was in
+// the patch, and rebuild the tray menu so checkmarks reflect the new
+// state. Used by the tray submenu's click handlers — kept as a
+// reusable function so any future IPC handler can reuse the exact
+// same validation + side-effect pipeline.
+function applyStartupPatch(patch) {
+  if (!patch || typeof patch !== 'object') return startupSettings
+  const next = { ...startupSettings }
+  let changed = false
+  if (typeof patch.launchOnStartup === 'boolean' && patch.launchOnStartup !== next.launchOnStartup) {
+    next.launchOnStartup = patch.launchOnStartup
+    changed = true
+  }
+  if (typeof patch.startMinimized === 'boolean' && patch.startMinimized !== next.startMinimized) {
+    next.startMinimized = patch.startMinimized
+    changed = true
+  }
+  if (typeof patch.startInDesktopMode === 'boolean' && patch.startInDesktopMode !== next.startInDesktopMode) {
+    next.startInDesktopMode = patch.startInDesktopMode
+    changed = true
+  }
+  if (!changed) return startupSettings
+  startupSettings = next
+  saveStartupSettings(next)
+  if (typeof patch.launchOnStartup === 'boolean') {
+    applyLoginItemSettings(next.launchOnStartup)
+  }
+  if (typeof trayMenuRefresh === 'function') {
+    try { trayMenuRefresh() } catch { /* tray gone; ignore */ }
+  }
+  return startupSettings
+}
+
 // ---- Window state persistence ----------------------------------------------
 //
 // We keep a tiny JSON file in the user-data folder remembering the last
@@ -171,8 +329,52 @@ function createWindow() {
 
   if (stored.isMaximized) win.maximize()
 
-  // Don't paint a white flash before the renderer is ready.
-  win.once('ready-to-show', () => win.show())
+  // Don't paint a white flash before the renderer is ready. Also the
+  // single point where startup options take effect:
+  //   1. startInDesktopMode: enter overlay BEFORE show so the window
+  //      is sized to the display rect on first paint (no flash of
+  //      normal-size window before it expands).
+  //   2. startMinimized: skip win.show() entirely, leaving the window
+  //      hidden behind the tray icon. Falls back to showing if tray
+  //      creation failed (tray check ensures the user is never
+  //      stranded with an invisible app and no way to recover it).
+  // `startupHideActive` is set pre-emptively in app.whenReady (BEFORE
+  // this hook ever fires) when the user has start-minimized enabled,
+  // so the macOS `activate` event — which fires on initial launch in
+  // addition to dock-click reopens — doesn't immediately auto-show
+  // the window and defeat the user's "start hidden" intent during
+  // the brief whenReady → ready-to-show window. The flag clears in
+  // showMainWindow() the moment the user explicitly surfaces the
+  // window via the tray; this hook never raises it (only conditionally
+  // clears it in the tray-failure fallback path) to avoid re-asserting
+  // a guard that the user has already overridden.
+  win.once('ready-to-show', () => {
+    if (startupSettings.startInDesktopMode) {
+      try { enterOverlayDisplay(win) } catch { /* ignore */ }
+    }
+    const startHidden = startupSettings.startMinimized && !!tray
+    if (startHidden) {
+      // Window stays hidden. We deliberately do NOT re-assert
+      // startupHideActive here, because the user may have already
+      // explicitly surfaced the window via the tray during the brief
+      // window between whenReady (where we pre-emptively set the
+      // guard) and ready-to-show; in that case showMainWindow() has
+      // already cleared the guard and re-asserting it would lock out
+      // subsequent activate events even though the user's intent has
+      // already shifted. The pre-emptive set in whenReady is the
+      // ONLY place this flag is raised on launch; from there, only
+      // user-initiated surfacing clears it.
+      // (If win.isVisible() is true here it means showMainWindow ran
+      // pre-ready-to-show; leave it visible.)
+    } else {
+      // Tray creation failed OR start-minimized is off: we MUST show
+      // the window, otherwise a tray-failure user is stranded with an
+      // invisible app and no tray icon. Also clear the pre-emptive
+      // guard so subsequent activate events don't silently no-op.
+      startupHideActive = false
+      if (!win.isVisible()) win.show()
+    }
+  })
 
   if (isDev) {
     // The desktop dev script (`npm run dev:desktop`) starts Vite on a
@@ -604,6 +806,11 @@ ipcMain.handle('window:get-cursor-position-in-window', (event) => {
 // where the user gets "stuck" with no way to quit.
 
 function showMainWindow() {
+  // Once the user explicitly surfaces the window, the "start hidden"
+  // intent has been satisfied — clear the guard so subsequent macOS
+  // activate events / future show requests behave normally instead of
+  // continuing to silently no-op.
+  startupHideActive = false
   // If the window was hidden to tray, restore-and-focus. If it was
   // destroyed (rare — only after explicit quit attempts that didn't
   // complete), re-create it.
@@ -638,6 +845,12 @@ function toggleDesktopModeFromTray() {
 }
 
 function buildTrayMenu() {
+  // Capability for the launch-on-startup item — disabled on Linux and
+  // in dev with an explanatory label suffix so the user understands
+  // *why* the toggle is greyed out instead of silently ignoring their
+  // click. The persisted setting is preserved either way; if a future
+  // build adds Linux autostart support the existing toggle reactivates.
+  const launchSupported = isLaunchOnStartupSupported()
   return Menu.buildFromTemplate([
     { label: 'Show MuralDesk', click: showMainWindow },
     { label: 'Hide MuralDesk', click: hideMainWindow },
@@ -648,6 +861,44 @@ function buildTrayMenu() {
       // menu whenever this flips from any source.
       label: inOverlayDisplay ? 'Exit Desktop Mode' : 'Enter Desktop Mode',
       click: toggleDesktopModeFromTray,
+    },
+    { type: 'separator' },
+    {
+      label: 'Startup',
+      submenu: [
+        {
+          label: launchSupported
+            ? 'Launch on startup'
+            : 'Launch on startup (unsupported on this platform)',
+          type: 'checkbox',
+          checked: !!startupSettings.launchOnStartup,
+          enabled: launchSupported,
+          click: (menuItem) => {
+            // Use the menuItem.checked Electron sets *before* invoking
+            // click, so a fast double-toggle stays consistent with the
+            // user's intent rather than racing against startupSettings.
+            applyStartupPatch({ launchOnStartup: !!menuItem.checked })
+          },
+        },
+        {
+          label: 'Start minimized to tray',
+          type: 'checkbox',
+          checked: !!startupSettings.startMinimized,
+          enabled: true,
+          click: (menuItem) => {
+            applyStartupPatch({ startMinimized: !!menuItem.checked })
+          },
+        },
+        {
+          label: 'Start in Desktop Mode',
+          type: 'checkbox',
+          checked: !!startupSettings.startInDesktopMode,
+          enabled: true,
+          click: (menuItem) => {
+            applyStartupPatch({ startInDesktopMode: !!menuItem.checked })
+          },
+        },
+      ],
     },
     { type: 'separator' },
     {
@@ -738,6 +989,26 @@ function onDisplayLayoutChanged() {
 }
 
 app.whenReady().then(() => {
+  // Load startup settings BEFORE createWindow so its ready-to-show
+  // hook can act on startInDesktopMode / startMinimized. Also sync
+  // the OS-level login-item state to match our persisted preference
+  // — handles the case where the user toggled the OS autostart off
+  // externally while our file still says on (or vice-versa). The
+  // call is a no-op on platforms / build modes where it's unsupported.
+  startupSettings = loadStartupSettings()
+  applyLoginItemSettings(startupSettings.launchOnStartup)
+
+  // Pre-emptively set the start-hidden guard before any window /
+  // tray creation, so the macOS `activate` event — which can fire
+  // BEFORE ready-to-show on initial launch — cannot defeat the
+  // user's start-minimized intent by surfacing the window through
+  // the activate handler's showMainWindow() call. The guard is
+  // gated on the persisted intent only at this point because tray
+  // creation hasn't happened yet; if tray creation later fails,
+  // ready-to-show clears the guard and shows the window so the
+  // user is never stranded with an invisible app and no tray icon.
+  startupHideActive = !!startupSettings.startMinimized
+
   createWindow()
   screen.on('display-added', onDisplayLayoutChanged)
   screen.on('display-removed', onDisplayLayoutChanged)
@@ -748,7 +1019,10 @@ app.whenReady().then(() => {
   // platforms without a status-area concept (some headless Linux
   // environments). In either case `tray` stays null and the close
   // handler gracefully falls back to default close (= quit) behavior,
-  // guaranteeing the user always has a way to exit.
+  // guaranteeing the user always has a way to exit. When tray is
+  // null, the start-minimized startup option also falls back to
+  // showing the window (see ready-to-show) — the user can never end
+  // up with both invisible window AND no tray icon.
   try {
     tray = createTray()
   } catch (err) {
@@ -756,8 +1030,19 @@ app.whenReady().then(() => {
     tray = null
   }
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-    else showMainWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+      return
+    }
+    // macOS fires `activate` on initial launch (not just on dock-click
+    // reopens). Without this guard, a start-minimized launch would be
+    // immediately defeated by activate calling showMainWindow(). The
+    // flag is set in ready-to-show when start-minimized takes effect
+    // and cleared on any explicit user-initiated show, so once the
+    // user surfaces the window via the tray, subsequent activates
+    // behave normally.
+    if (startupHideActive) return
+    showMainWindow()
   })
 })
 
