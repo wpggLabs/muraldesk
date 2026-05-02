@@ -98,12 +98,14 @@ export default function BoardItem({
   }
 
   // Hover/select outline is intentionally subtle — the item should feel
-  // like a free-floating object, not a dashboard card.
+  // like a free-floating object, not a dashboard card. Selected uses a
+  // crisp accent ring; hover uses a soft border that hints the card is
+  // alive without competing visually with selection.
   const outline = selected
-    ? '0 0 0 2px var(--accent), 0 10px 30px rgba(0,0,0,0.55)'
+    ? '0 0 0 1.5px var(--accent), 0 0 0 5px var(--accent-soft), 0 14px 36px rgba(0,0,0,0.55)'
     : hovered
-      ? '0 0 0 1px rgba(108,99,255,0.45), 0 10px 30px rgba(0,0,0,0.5)'
-      : '0 6px 22px rgba(0,0,0,0.45)'
+      ? '0 0 0 1px var(--border-strong), 0 12px 32px rgba(0,0,0,0.5)'
+      : '0 8px 24px rgba(0,0,0,0.42)'
 
   // Resize handles sit *inside* the wrapper at the corners so hovering
   // them keeps the wrapper's hover state alive. They are pointer-event-
@@ -199,7 +201,7 @@ export default function BoardItem({
             overflow: 'hidden',
             boxShadow: outline,
             opacity: itemOpacity,
-            transition: 'opacity 0.15s ease, box-shadow 0.18s ease',
+            transition: 'opacity var(--t-fast) var(--ease-out), box-shadow var(--t-med) var(--ease-out)',
           }}
         >
           {/* Item content fills the whole surface — no header strip. */}
@@ -215,18 +217,21 @@ export default function BoardItem({
           className="no-drag"
           style={{
             position: 'absolute',
-            top: 6,
-            right: 6,
+            top: 7,
+            right: 7,
             display: 'flex',
             gap: 2,
             padding: 3,
-            background: 'rgba(15,15,16,0.82)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 8,
-            backdropFilter: 'blur(8px)',
+            background: 'var(--surface-glass-strong)',
+            border: '1px solid var(--border)',
+            borderRadius: 9,
+            backdropFilter: 'blur(12px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
             opacity: showControls ? 1 : 0,
+            transform: showControls ? 'translateY(0)' : 'translateY(-4px)',
             pointerEvents: showControls ? 'auto' : 'none',
-            transition: 'opacity 0.15s',
+            transition: 'opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out)',
             zIndex: 20,
           }}
           onMouseDown={(e) => e.stopPropagation()}
@@ -305,10 +310,15 @@ export default function BoardItem({
 function IconBtn({ children, onClick, title, highlight, danger }) {
   const [hov, setHov] = useState(false)
   const bg = danger
-    ? (hov ? 'var(--danger)' : 'rgba(255,79,79,0.18)')
+    ? (hov ? 'var(--danger)' : 'var(--danger-soft)')
     : highlight
       ? 'var(--accent)'
-      : (hov ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)')
+      : (hov ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.04)')
+  const color = danger
+    ? '#fff'
+    : highlight
+      ? '#fff'
+      : (hov ? 'var(--text)' : 'var(--text-muted)')
   return (
     <button
       type="button"
@@ -319,18 +329,18 @@ function IconBtn({ children, onClick, title, highlight, danger }) {
       title={title}
       style={{
         background: bg,
-        color: '#fff',
+        color,
         border: 'none',
-        borderRadius: 5,
-        width: 22,
-        height: 20,
+        borderRadius: 6,
+        width: 24,
+        height: 22,
         fontSize: 11,
-        lineHeight: '20px',
+        lineHeight: '22px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: 'pointer',
-        transition: 'background 0.12s',
+        transition: 'background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out)',
       }}
     >
       {children}
