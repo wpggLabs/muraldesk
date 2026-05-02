@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useBoard } from './hooks/useBoard'
+import { useDesktopMode } from './hooks/useDesktopMode'
 import { buildSampleItems } from './lib/sampleBoard'
 import { defaultLinkSize } from './lib/linkType'
 import BoardItem from './components/BoardItem'
@@ -22,26 +23,19 @@ export default function App() {
   } = useBoard()
 
   const [selectedId, setSelectedId] = useState(null)
-  const [isFullscreen, setIsFullscreen] = useState(
-    typeof document !== 'undefined' && !!document.fullscreenElement
-  )
 
-  // Track real fullscreen state (also catches Esc-to-exit).
-  useEffect(() => {
-    function onChange() {
-      setIsFullscreen(!!document.fullscreenElement)
-    }
-    document.addEventListener('fullscreenchange', onChange)
-    return () => document.removeEventListener('fullscreenchange', onChange)
-  }, [])
-
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(() => {})
-    } else {
-      document.documentElement.requestFullscreen?.().catch(() => {})
-    }
-  }, [])
+  // Desktop Canvas Mode + unified fullscreen control. On web this hook
+  // wraps the document Fullscreen API; in Electron it talks to the main
+  // process via the preload bridge so the OS-level window goes fullscreen
+  // and the toolbar can auto-hide for a desktop-mural feel.
+  const {
+    isElectron,
+    isFullscreen,
+    toggleFullscreen,
+    desktopMode,
+    setDesktopMode,
+    toggleDesktopMode,
+  } = useDesktopMode()
 
   const handleAddImage = useCallback((file) => {
     addMediaItem('image', file, { width: 300, height: 220 })
@@ -129,7 +123,11 @@ export default function App() {
     reader.readAsText(file)
   }, [items.length, importLayout])
 
-  // Keyboard shortcuts: Delete removes selected card, Escape deselects.
+  // Keyboard shortcuts:
+  //   - Delete / Backspace removes the selected card
+  //   - Escape exits Desktop Canvas Mode if active, then deselects
+  //   - Ctrl/Cmd + Shift + F toggles fullscreen (Electron OS fullscreen,
+  //     or browser Fullscreen API on web)
   // Skip while typing in an input/textarea so note editing still works.
   useEffect(() => {
     function isEditableTarget(t) {
@@ -138,8 +136,16 @@ export default function App() {
       return tag === 'input' || tag === 'textarea' || t.isContentEditable
     }
     function onKey(e) {
+      // Ctrl/Cmd + Shift + F → fullscreen toggle. Available everywhere,
+      // even while typing — it's a global shortcut.
+      if (e.shiftKey && (e.ctrlKey || e.metaKey) && (e.key === 'F' || e.key === 'f')) {
+        e.preventDefault()
+        toggleFullscreen()
+        return
+      }
       if (isEditableTarget(e.target)) return
       if (e.key === 'Escape') {
+        if (desktopMode) setDesktopMode(false)
         setSelectedId(null)
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
         e.preventDefault()
@@ -149,7 +155,7 @@ export default function App() {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [selectedId, removeItem])
+  }, [selectedId, removeItem, desktopMode, setDesktopMode, toggleFullscreen])
 
   // Click on empty canvas deselects.
   function handleCanvasMouseDown(e) {
@@ -233,6 +239,9 @@ export default function App() {
         onImport={handleImport}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
+        isElectron={isElectron}
+        desktopMode={desktopMode}
+        onToggleDesktopMode={toggleDesktopMode}
       />
     </div>
   )

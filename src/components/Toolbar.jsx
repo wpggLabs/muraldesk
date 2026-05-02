@@ -11,6 +11,9 @@ export default function Toolbar({
   onImport,
   isFullscreen,
   onToggleFullscreen,
+  isElectron = false,
+  desktopMode = false,
+  onToggleDesktopMode,
 }) {
   const imageInputRef = useRef(null)
   const videoInputRef = useRef(null)
@@ -24,16 +27,24 @@ export default function Toolbar({
   // canvas, so the workspace feels like a clean mural rather than an app.
   // Toolbar stays fully visible while hovered, while a dialog is open,
   // or until the first mouse-move arrives.
+  //
+  // In Desktop Canvas Mode we go further: the toolbar fully hides
+  // (opacity 0 + pointer-events: none) unless the cursor is at the very
+  // top of the screen, the toolbar itself is hovered, or a dialog is
+  // open. This is what makes the canvas feel like a desktop mural layer.
   const [nearTop, setNearTop] = useState(true)
   const [hovered, setHovered] = useState(false)
   useEffect(() => {
+    const REVEAL_PX = desktopMode ? 24 : 110
     function onMove(e) {
-      setNearTop(e.clientY < 110)
+      setNearTop(e.clientY < REVEAL_PX)
     }
     window.addEventListener('mousemove', onMove)
     return () => window.removeEventListener('mousemove', onMove)
-  }, [])
-  const dim = !(nearTop || hovered || linkDialog)
+  }, [desktopMode])
+  const visible = nearTop || hovered || linkDialog
+  const dim = !visible
+  const fullyHidden = desktopMode && !visible
 
   function handleImageFile(e) {
     const file = e.target.files[0]
@@ -98,7 +109,6 @@ export default function Toolbar({
           position: 'fixed',
           top: 14,
           left: '50%',
-          transform: 'translateX(-50%)',
           zIndex: 9999,
           display: 'flex',
           alignItems: 'center',
@@ -113,8 +123,10 @@ export default function Toolbar({
           maxWidth: 'calc(100vw - 32px)',
           flexWrap: 'wrap',
           justifyContent: 'center',
-          opacity: dim ? 0.32 : 1,
-          transition: 'opacity 0.25s ease',
+          opacity: fullyHidden ? 0 : (dim ? 0.32 : 1),
+          pointerEvents: fullyHidden ? 'none' : 'auto',
+          transform: fullyHidden ? 'translateX(-50%) translateY(-12px)' : 'translateX(-50%)',
+          transition: 'opacity 0.25s ease, transform 0.25s ease',
         }}
       >
         <span
@@ -147,6 +159,15 @@ export default function Toolbar({
           label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           onClick={onToggleFullscreen}
         />
+
+        {isElectron && (
+          <PillBtn
+            icon="🖥"
+            label={desktopMode ? 'Exit Desktop' : 'Desktop'}
+            onClick={onToggleDesktopMode}
+            active={desktopMode}
+          />
+        )}
 
         <Divider />
 
@@ -241,8 +262,16 @@ function Divider() {
   )
 }
 
-function PillBtn({ icon, label, onClick, danger }) {
+function PillBtn({ icon, label, onClick, danger, active }) {
   const [hov, setHov] = useState(false)
+  const bg = active
+    ? 'rgba(108,99,255,0.22)'
+    : hov
+      ? danger ? 'rgba(255,79,79,0.18)' : 'rgba(255,255,255,0.08)'
+      : 'transparent'
+  const color = danger
+    ? hov ? 'var(--danger)' : 'var(--text-muted)'
+    : active ? 'var(--accent)' : hov ? 'var(--text)' : 'var(--text-muted)'
   return (
     <button
       type="button"
@@ -251,13 +280,10 @@ function PillBtn({ icon, label, onClick, danger }) {
       onMouseLeave={() => setHov(false)}
       title={label}
       aria-label={label}
+      aria-pressed={active ? 'true' : undefined}
       style={{
-        background: hov
-          ? danger ? 'rgba(255,79,79,0.18)' : 'rgba(255,255,255,0.08)'
-          : 'transparent',
-        color: danger
-          ? hov ? 'var(--danger)' : 'var(--text-muted)'
-          : hov ? 'var(--text)' : 'var(--text-muted)',
+        background: bg,
+        color,
         border: 'none',
         borderRadius: 999,
         padding: '4px 10px',
