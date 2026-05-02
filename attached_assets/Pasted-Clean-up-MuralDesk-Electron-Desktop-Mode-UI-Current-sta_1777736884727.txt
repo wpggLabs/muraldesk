@@ -1,0 +1,68 @@
+Clean up MuralDesk Electron Desktop Mode UI.
+
+Current state:
+The transparent full-display overlay works, but it still feels too app-like because the toolbar has too many buttons and the sample board creates big welcome/tips cards.
+
+Goal:
+When in Electron Desktop Mode, MuralDesk should feel like a clean desktop mural layer.
+
+Changes:
+
+1. Electron toolbar cleanup
+- In Electron mode, hide the separate Fullscreen / Exit Fullscreen button.
+- Keep only Desktop / Exit Desktop.
+- Web/PWA should keep Fullscreen.
+- Do not change overlay logic.
+
+2. Desktop Mode toolbar behavior
+- When Desktop Mode is active and items exist:
+  - toolbar should hide by default
+  - toolbar should show only when mouse is near top reveal zone or hovering an item
+  - toolbar should not stay visible just because the app is focused
+- Keep top reveal zone stable.
+- Keep 700ms hide delay.
+
+3. Sample board cleanup
+- In Electron Desktop Mode, Sample should not add big Welcome/Tips note cards.
+- Sample should create a few clean mural objects only:
+  - one sample image
+  - one link card
+  - maybe one small sticky note
+- Do not create large instructional panels in Desktop Mode.
+- Web/PWA can keep the current richer empty-state/sample behavior if needed.
+
+4. Empty state in Electron
+- In Electron transparent mode, do not show the big empty-state hero.
+- If board is empty, show only the floating toolbar.
+- No large centered welcome panel.
+
+5. Item positioning
+- When adding a new image/video/note/link in Desktop Mode, place it near the center of the current display/window.
+- Avoid spawning behind the taskbar or half off-screen.
+- Keep drag/resize across full display.
+
+6. Do not break
+- Transparent overlay
+- Click-through empty areas
+- Toolbar/item interactivity
+- Drag/resize
+- Lock/duplicate/delete
+- IndexedDB media persistence
+- localStorage layout persistence
+- Export/import
+- Web/PWA version
+
+Test on Windows:
+1. Launch Electron.
+2. Enter Desktop Mode.
+3. Empty board shows only toolbar.
+4. Add image.
+5. Toolbar hides after add.
+6. Hover image, controls and toolbar appear.
+7. Move away, toolbar hides.
+8. Sample button creates clean mural objects, not big welcome/tips panels.
+9. Fullscreen button is hidden in Electron.
+10. Web/PWA still shows Fullscreen.
+11. Close/reopen persistence works.
+
+Report exact files changed.

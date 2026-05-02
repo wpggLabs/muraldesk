@@ -91,28 +91,67 @@ export default function App() {
     window.muraldesk?.closeWindow?.()
   }, [])
 
+  // Pick a spawn position for new items. In Desktop Canvas Mode the
+  // BrowserWindow covers the full display, so the default jitter
+  // position (80 + random*200, top-left of the viewport) lands cards
+  // way off in a corner and can clip behind the taskbar / dock. We
+  // center on the viewport instead, with a small random jitter so
+  // consecutive adds don't perfectly overlap. Outside Desktop Mode
+  // we return an empty object so useBoard's existing top-left jitter
+  // is preserved (it's appropriate for the small normal window).
+  const spawnPosFor = useCallback((width, height) => {
+    if (!desktopMode) return {}
+    if (typeof window === 'undefined') return {}
+    const cx = (window.innerWidth - width) / 2
+    const cy = (window.innerHeight - height) / 2
+    const jx = (Math.random() - 0.5) * 80
+    const jy = (Math.random() - 0.5) * 60
+    // Clamp so even with jitter we never spawn at a negative coord
+    // (which would put the card's drag handle off-screen).
+    return {
+      x: Math.max(20, Math.round(cx + jx)),
+      y: Math.max(20, Math.round(cy + jy)),
+    }
+  }, [desktopMode])
+
   const handleAddImage = useCallback((file) => {
-    addMediaItem('image', file, { width: 300, height: 220 })
-  }, [addMediaItem])
+    const w = 300
+    const h = 220
+    addMediaItem('image', file, { width: w, height: h, ...spawnPosFor(w, h) })
+  }, [addMediaItem, spawnPosFor])
 
   const handleAddVideo = useCallback((file) => {
-    addMediaItem('video', file, { width: 360, height: 240, loop: true, muted: true })
-  }, [addMediaItem])
+    const w = 360
+    const h = 240
+    addMediaItem('video', file, {
+      width: w, height: h, loop: true, muted: true, ...spawnPosFor(w, h),
+    })
+  }, [addMediaItem, spawnPosFor])
 
   const handleAddNote = useCallback(() => {
-    addItem('note', { text: '', width: 220, height: 180, color: '#2a2a3a' })
-  }, [addItem])
+    const w = 220
+    const h = 180
+    addItem('note', {
+      text: '', width: w, height: h, color: '#2a2a3a', ...spawnPosFor(w, h),
+    })
+  }, [addItem, spawnPosFor])
 
   const handleAddLink = useCallback((url, title, description) => {
     // Pick a default size that fits the link's preview kind: 16:9-ish for
     // YouTube / direct video, taller for images, compact for plain web.
     const { width, height } = defaultLinkSize(url)
-    addItem('link', { url, title, description, width, height })
-  }, [addItem])
+    addItem('link', { url, title, description, width, height, ...spawnPosFor(width, height) })
+  }, [addItem, spawnPosFor])
 
   const handleSampleBoard = useCallback(() => {
-    addItems(buildSampleItems())
-  }, [addItems])
+    // In Electron Desktop Mode the rich onboarding sample (with two
+    // Welcome / Tips note panels) feels too "app-like" for what is
+    // meant to be a clean desktop mural layer — minimal mode returns
+    // just one image, one link, and a small sticky note centered on
+    // the current display. Web/PWA and normal-window Electron keep
+    // the richer sample.
+    addItems(buildSampleItems({ minimal: desktopMode }))
+  }, [addItems, desktopMode])
 
   const handleExport = useCallback(() => {
     const data = exportLayout()

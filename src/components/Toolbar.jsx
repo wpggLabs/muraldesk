@@ -66,7 +66,17 @@ export default function Toolbar({
   //          turn false, a 700 ms grace timer starts; if any of them
   //          becomes true again before it expires, the timer is
   //          cancelled. Prevents flicker / "slipping away" toolbar.
-  const [nearTop, setNearTop] = useState(true)
+  // When MuralDesk launches in a "fully-hidden" mode (Electron
+  // transparent-overlay or Desktop Canvas) WITH items already on the
+  // board, the toolbar should be hidden until the user explicitly
+  // moves the cursor into the top reveal zone or hovers an item —
+  // the app should not "stay visible just because the app is
+  // focused" on launch. Defaulting `nearTop` to true (the previous
+  // behavior) caused a visible toolbar flash on launch. The empty-
+  // board case still force-shows via `forceShow` below so first-run
+  // users have a discoverable entry point.
+  const startsHidden = (isElectron || desktopMode) && hasItems
+  const [nearTop, setNearTop] = useState(!startsHidden)
   const [hovered, setHovered] = useState(false)
   useEffect(() => {
     const REVEAL_PX = pickRevealPx({ isElectron, desktopMode })
@@ -97,7 +107,10 @@ export default function Toolbar({
   // present), so no debounce is needed and we mirror `shouldShow`
   // synchronously to preserve the original web UX (instant dim).
   const debounceHide = isElectron || desktopMode
-  const [revealed, setRevealed] = useState(true)
+  // Same start-hidden rule as nearTop above: launch hidden when items
+  // already exist in a fully-hidden mode, otherwise launch revealed
+  // (web build, empty board, normal Electron with no items, …).
+  const [revealed, setRevealed] = useState(!startsHidden)
   const hideTimerRef = useRef(null)
   useEffect(() => {
     if (!debounceHide) {
@@ -255,11 +268,22 @@ export default function Toolbar({
 
         <Divider />
 
-        <PillBtn
-          icon={isFullscreen ? '⤡' : '⤢'}
-          label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-          onClick={onToggleFullscreen}
-        />
+        {/*
+          The Fullscreen button is web/PWA only. In Electron the Desktop
+          Mode button below already drives the equivalent behavior (the
+          BrowserWindow expands to cover the current display via
+          setBounds(display.bounds) — see electron/main.cjs), so showing
+          two redundant toggles makes the toolbar feel cluttered and
+          "app-like". Web keeps the Fullscreen button so the
+          Ctrl/Cmd+Shift+F shortcut and toolbar control still pair up.
+        */}
+        {!isElectron && (
+          <PillBtn
+            icon={isFullscreen ? '⤡' : '⤢'}
+            label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            onClick={onToggleFullscreen}
+          />
+        )}
 
         {isElectron && (
           <PillBtn
