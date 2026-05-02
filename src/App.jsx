@@ -4,6 +4,16 @@ import { useDesktopMode } from './hooks/useDesktopMode'
 import { useElectronClickThrough } from './hooks/useElectronClickThrough'
 import { buildSampleItems } from './lib/sampleBoard'
 import { defaultLinkSize } from './lib/linkType'
+import {
+  buildBackup,
+  restoreBackup,
+  isBackupPayload,
+  formatBytes,
+  MAX_BLOB_BYTES,
+  WARN_TOTAL_BYTES,
+  MAX_TOTAL_BYTES,
+  MAX_IMPORT_FILE_BYTES,
+} from './lib/backup'
 import BoardItem from './components/BoardItem'
 import Toolbar from './components/Toolbar'
 import EmptyState from './components/EmptyState'
@@ -190,6 +200,10 @@ export default function App() {
     addItems(buildSampleItems({ minimal: desktopMode }))
   }, [addItems, desktopMode])
 
+  // Quick layout export: a small JSON file with item metadata only.
+  // Media (images/videos) is referenced by IDB id but the bytes are
+  // NOT included, so this file is only fully restorable on the SAME
+  // browser. Cross-machine portability uses handleExportBackup below.
   const handleExport = useCallback(() => {
     const data = exportLayout()
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -204,50 +218,176 @@ export default function App() {
     setTimeout(() => URL.revokeObjectURL(url), 0)
   }, [exportLayout])
 
+  // Portable backup: same item metadata plus base64-encoded media
+  // blobs from IDB. The on-disk file is `.muraldesk.json` (still a
+  // JSON file, just with a distinguishing double extension so the
+  // user can tell layouts and backups apart in their downloads
+  // folder). See src/lib/backup.js for size limits + skip rules.
+  const handleExportBackup = useCallback(async () => {
+    const layout = exportLayout()
+    let result
+    try {
+      result = await buildBackup(layout.items)
+    } catch (err) {
+      console.error(err)
+      alert('Could not build backup.')
+      return
+    }
+    const { payload, totalBytes, skipped, blobCount } = result
+
+    // Skipped items break down into reasons we report differently:
+    //   too-large   → user-actionable: "your file > 25 MB, won't fit"
+    //   cap-reached → tell them we stopped at the total cap
+    //   missing / unreadable → quietly note (rare; orphan / IDB error)
+    const tooLarge = skipped.filter((s) => s.reason === 'too-large')
+    const capHit = skipped.filter((s) => s.reason === 'cap-reached')
+    const warnings = []
+    if (tooLarge.length) {
+      const list = tooLarge
+        .slice(0, 5)
+        .map((s) => `• ${s.label || `(untitled ${s.type})`} — ${formatBytes(s.size)}`)
+        .join('\n')
+      const more = tooLarge.length > 5 ? `\n… and ${tooLarge.length - 5} more` : ''
+      warnings.push(
+        `${tooLarge.length} item(s) have media larger than ${formatBytes(MAX_BLOB_BYTES)} per file and will NOT be in the backup. Their layout is preserved without media:\n${list}${more}`
+      )
+    }
+    if (capHit.length) {
+      warnings.push(
+        `Total media exceeded ${formatBytes(MAX_TOTAL_BYTES)}; ${capHit.length} item(s) past the cap kept their layout but not their media.`
+      )
+    }
+    if (totalBytes >= WARN_TOTAL_BYTES) {
+      warnings.push(`Backup payload is ${formatBytes(totalBytes)} of media (~${formatBytes(Math.round(totalBytes * 1.34))} on disk).`)
+    }
+    if (warnings.length) {
+      const ok = confirm(`${warnings.join('\n\n')}\n\nContinue with the backup?`)
+      if (!ok) return
+    }
+
+    const json = JSON.stringify(payload)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    a.download = `muraldesk-backup-${stamp}.muraldesk.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 0)
+
+    // Reassuring tail message (non-blocking) so the user knows what
+    // they got — count items vs. media to make the difference clear.
+    if (blobCount > 0 || skipped.length > 0) {
+      console.info(
+        `[muraldesk] Backup created — ${payload.items.length} item(s), ${blobCount} media blob(s) (${formatBytes(totalBytes)}), ${skipped.length} skipped.`
+      )
+    }
+  }, [exportLayout])
+
+  // Single Import handler that auto-detects layout-only vs. backup
+  // payloads via isBackupPayload(). Backup files restore media to
+  // IDB BEFORE calling importLayout, so the existing hydrateMediaSrcs
+  // step in useBoard sees the populated IDB and rebuilds `src` URLs
+  // exactly as on a normal load — no changes to useBoard.js.
   const handleImport = useCallback((file) => {
-    const MAX_IMPORT_BYTES = 5 * 1024 * 1024 // 5 MB
+    const MAX_LAYOUT_BYTES = 5 * 1024 * 1024 // 5 MB for plain layouts
     const MAX_IMPORT_ITEMS = 500
-    if (file.size > MAX_IMPORT_BYTES) {
-      alert('Layout file is too large (5 MB max).')
+    // The backup limit is generous because base64 inflation makes
+    // the on-disk file substantially larger than the raw blob bytes.
+    // We don't yet know which kind of file we have, so allow up to
+    // the larger of the two and decide after parsing.
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      alert(`File is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_IMPORT_FILE_BYTES)}.`)
       return
     }
     const reader = new FileReader()
     reader.onload = async () => {
+      let parsed
       try {
-        const parsed = JSON.parse(reader.result)
-        let incoming = Array.isArray(parsed) ? parsed : parsed?.items
-        if (!Array.isArray(incoming)) {
-          alert('That file does not look like a MuralDesk layout.')
-          return
-        }
-        if (incoming.length > MAX_IMPORT_ITEMS) {
-          alert(`Layout has too many items (${incoming.length}). Max is ${MAX_IMPORT_ITEMS}.`)
-          return
-        }
-        // Sanitize: drop unsafe protocols on link items so an imported
-        // javascript:/data: URL can never become a clickable href.
-        incoming = incoming.map((it) => {
-          if (it && it.type === 'link' && typeof it.url === 'string') {
-            try {
-              const proto = new URL(it.url).protocol
-              if (proto !== 'http:' && proto !== 'https:') {
-                return { ...it, url: '' }
-              }
-            } catch {
+        parsed = JSON.parse(reader.result)
+      } catch (err) {
+        console.error(err)
+        alert('Could not read that file (not valid JSON).')
+        return
+      }
+
+      // Helper: drop unsafe protocols on link items so an imported
+      // javascript:/data: URL can never become a clickable href.
+      const sanitize = (arr) => arr.map((it) => {
+        if (it && it.type === 'link' && typeof it.url === 'string') {
+          try {
+            const proto = new URL(it.url).protocol
+            if (proto !== 'http:' && proto !== 'https:') {
               return { ...it, url: '' }
             }
+          } catch {
+            return { ...it, url: '' }
           }
-          return it
-        })
+        }
+        return it
+      })
+
+      // ── Backup (.muraldesk.json) path ──
+      if (isBackupPayload(parsed)) {
+        if (!Array.isArray(parsed.items)) {
+          alert('Backup file is missing its items list.')
+          return
+        }
+        if (parsed.items.length > MAX_IMPORT_ITEMS) {
+          alert(`Backup has too many items (${parsed.items.length}). Max is ${MAX_IMPORT_ITEMS}.`)
+          return
+        }
+        const mediaCount = Object.keys(parsed.media || {}).length
         const ok = items.length === 0
           ? true
-          : confirm(`Replace your current board with ${incoming.length} imported item(s)?`)
+          : confirm(`Replace your current board with backup contents (${parsed.items.length} item(s) + ${mediaCount} media)?`)
         if (!ok) return
+        let restoreResult
+        try {
+          restoreResult = await restoreBackup({ ...parsed, items: sanitize(parsed.items) })
+        } catch (err) {
+          console.error(err)
+          alert(`Could not restore backup: ${err.message}`)
+          return
+        }
+        await importLayout(restoreResult.items)
+        setSelectedId(null)
+        if (restoreResult.mediaFailures > 0) {
+          alert(`Restored ${restoreResult.items.length} item(s). ${restoreResult.mediaFailures} media reference(s) could not be decoded; their items show without media.`)
+        }
+        return
+      }
+
+      // ── Quick layout JSON path (existing behavior) ──
+      // Layout-only files have a stricter file-size limit since they
+      // shouldn't contain blob data; reject early if the file is
+      // suspiciously large for that path.
+      if (file.size > MAX_LAYOUT_BYTES) {
+        alert(`Layout file is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_LAYOUT_BYTES)} for plain layouts. (Did you mean to import a backup file?)`)
+        return
+      }
+      let incoming = Array.isArray(parsed) ? parsed : parsed?.items
+      if (!Array.isArray(incoming)) {
+        alert('That file does not look like a MuralDesk layout or backup.')
+        return
+      }
+      if (incoming.length > MAX_IMPORT_ITEMS) {
+        alert(`Layout has too many items (${incoming.length}). Max is ${MAX_IMPORT_ITEMS}.`)
+        return
+      }
+      incoming = sanitize(incoming)
+      const ok = items.length === 0
+        ? true
+        : confirm(`Replace your current board with ${incoming.length} imported item(s)?`)
+      if (!ok) return
+      try {
         await importLayout(incoming)
         setSelectedId(null)
       } catch (err) {
         console.error(err)
-        alert('Could not read that layout file.')
+        alert('Could not import that layout.')
       }
     }
     reader.readAsText(file)
@@ -438,6 +578,7 @@ export default function App() {
         onClear={() => { clearBoard(); setSelectedId(null) }}
         onSampleBoard={handleSampleBoard}
         onExport={handleExport}
+        onExportBackup={handleExportBackup}
         onImport={handleImport}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
