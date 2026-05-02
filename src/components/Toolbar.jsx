@@ -28,6 +28,7 @@ function Toolbar({
   onClear,
   onSampleBoard,
   onExport,
+  onExportBackup,
   onImport,
   isFullscreen,
   onToggleFullscreen,
@@ -305,8 +306,13 @@ function Toolbar({
         <Divider />
 
         <PillBtn icon="✨" label="Sample" onClick={onSampleBoard} />
-        <PillBtn icon="↧" label="Export" onClick={onExport} />
-        <PillBtn icon="↥" label="Import" onClick={() => importInputRef.current?.click()} />
+        <PillBtn icon="↧" label="Export" onClick={onExport} title="Export layout JSON (this machine only — media stays in this browser)" />
+        {/* Portable backup — same JSON shape as Export but with
+            media blobs encoded inline. Restorable on another
+            machine. The companion Import button auto-detects which
+            of the two formats it's reading. */}
+        <PillBtn icon="📦" label="Backup" onClick={onExportBackup} title="Export portable backup (.muraldesk.json) — includes media for cross-machine restore" />
+        <PillBtn icon="↥" label="Import" onClick={() => importInputRef.current?.click()} title="Import a layout or backup file (auto-detected)" />
 
         <Divider />
 
@@ -375,7 +381,7 @@ function Toolbar({
 
         <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageFile} />
         <input ref={videoInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleVideoFile} />
-        <input ref={importInputRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={handleImportFile} />
+        <input ref={importInputRef} type="file" accept="application/json,.json,.muraldesk.json" style={{ display: 'none' }} onChange={handleImportFile} />
       </div>
 
       {linkDialog && (
@@ -467,7 +473,7 @@ function Divider() {
   )
 }
 
-function PillBtn({ icon, label, onClick, danger, active, compact }) {
+function PillBtn({ icon, label, onClick, danger, active, compact, title }) {
   const [hov, setHov] = useState(false)
   const bg = active
     ? 'rgba(108,99,255,0.22)'
@@ -483,7 +489,7 @@ function PillBtn({ icon, label, onClick, danger, active, compact }) {
       onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      title={label}
+      title={title || label}
       aria-label={label}
       aria-pressed={active ? 'true' : undefined}
       style={{
