@@ -1,8 +1,13 @@
 export default function LinkCard({ item }) {
-  const url = item.url || ''
+  const rawUrl = item.url || ''
   let hostname = ''
+  let safeUrl = ''
   try {
-    hostname = new URL(url).hostname
+    const parsed = new URL(rawUrl)
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      hostname = parsed.hostname
+      safeUrl = rawUrl
+    }
   } catch {}
 
   const faviconUrl = hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=32` : null
@@ -41,24 +46,43 @@ export default function LinkCard({ item }) {
           {item.description}
         </div>
       )}
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          display: 'inline-block',
-          marginTop: 10,
-          padding: '4px 10px',
-          background: 'var(--accent)',
-          color: '#fff',
-          borderRadius: 5,
-          fontSize: 12,
-          textDecoration: 'none',
-          alignSelf: 'flex-start',
-        }}
-      >
-        Open →
-      </a>
+      {safeUrl ? (
+        <a
+          href={safeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-block',
+            marginTop: 10,
+            padding: '4px 10px',
+            background: 'var(--accent)',
+            color: '#fff',
+            borderRadius: 5,
+            fontSize: 12,
+            textDecoration: 'none',
+            alignSelf: 'flex-start',
+          }}
+        >
+          Open →
+        </a>
+      ) : (
+        <span
+          title="Link blocked: only http(s) URLs are allowed"
+          style={{
+            display: 'inline-block',
+            marginTop: 10,
+            padding: '4px 10px',
+            background: 'var(--surface)',
+            color: 'var(--text-muted)',
+            border: '1px dashed var(--border)',
+            borderRadius: 5,
+            fontSize: 12,
+            alignSelf: 'flex-start',
+          }}
+        >
+          Unsafe URL
+        </span>
+      )}
     </div>
   )
 }
