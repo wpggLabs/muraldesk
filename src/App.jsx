@@ -4,7 +4,6 @@ import { buildSampleItems } from './lib/sampleBoard'
 import BoardItem from './components/BoardItem'
 import Toolbar from './components/Toolbar'
 import EmptyState from './components/EmptyState'
-import Footer from './components/Footer'
 
 export default function App() {
   const {
@@ -22,6 +21,26 @@ export default function App() {
   } = useBoard()
 
   const [selectedId, setSelectedId] = useState(null)
+  const [isFullscreen, setIsFullscreen] = useState(
+    typeof document !== 'undefined' && !!document.fullscreenElement
+  )
+
+  // Track real fullscreen state (also catches Esc-to-exit).
+  useEffect(() => {
+    function onChange() {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {})
+    } else {
+      document.documentElement.requestFullscreen?.().catch(() => {})
+    }
+  }, [])
 
   const handleAddImage = useCallback((file) => {
     addMediaItem('image', file, { width: 300, height: 220 })
@@ -36,7 +55,7 @@ export default function App() {
   }, [addItem])
 
   const handleAddLink = useCallback((url, title, description) => {
-    addItem('link', { url, title, description, width: 280, height: 180 })
+    addItem('link', { url, title, description, width: 280, height: 160 })
   }, [addItem])
 
   const handleSampleBoard = useCallback(() => {
@@ -134,14 +153,19 @@ export default function App() {
   }
 
   return (
-    <div style={{
-      width: '100vw',
-      height: '100vh',
-      position: 'relative',
-      overflow: 'hidden',
-      background: 'var(--bg)',
-    }}>
+    <div
+      onMouseDown={handleCanvasMouseDown}
+      style={{
+        width: '100vw',
+        height: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
+        background: 'var(--bg)',
+      }}
+    >
+      {/* Soft ambient glow + grid (purely decorative, never intercepts pointer) */}
       <div
+        aria-hidden
         style={{
           position: 'absolute',
           inset: 0,
@@ -149,12 +173,11 @@ export default function App() {
             radial-gradient(circle at 20% 30%, rgba(108,99,255,0.04) 0%, transparent 60%),
             radial-gradient(circle at 80% 70%, rgba(62,207,142,0.03) 0%, transparent 60%)
           `,
-          backgroundSize: '100% 100%',
           pointerEvents: 'none',
         }}
       />
-
       <div
+        aria-hidden
         style={{
           position: 'absolute',
           inset: 0,
@@ -174,26 +197,26 @@ export default function App() {
         />
       )}
 
-      <div
-        style={{ position: 'absolute', inset: 0 }}
-        onMouseDown={handleCanvasMouseDown}
-      >
-        {items.map(item => (
-          <BoardItem
-            key={item.id}
-            item={item}
-            selected={selectedId === item.id}
-            onUpdate={updateItem}
-            onRemove={(id) => {
-              removeItem(id)
-              if (selectedId === id) setSelectedId(null)
-            }}
-            onFocus={bringToFront}
-            onSelect={setSelectedId}
-            onDuplicate={duplicateItem}
-          />
-        ))}
-      </div>
+      {/*
+        Items render directly into the root canvas so react-rnd's bounds="parent"
+        is the full viewport. No wrapper container = no reduced draggable area.
+        We forward mouse-down on empty canvas via the root element above.
+      */}
+      {items.map((item) => (
+        <BoardItem
+          key={item.id}
+          item={item}
+          selected={selectedId === item.id}
+          onUpdate={updateItem}
+          onRemove={(id) => {
+            removeItem(id)
+            if (selectedId === id) setSelectedId(null)
+          }}
+          onFocus={bringToFront}
+          onSelect={setSelectedId}
+          onDuplicate={duplicateItem}
+        />
+      ))}
 
       <Toolbar
         onAddImage={handleAddImage}
@@ -204,9 +227,9 @@ export default function App() {
         onSampleBoard={handleSampleBoard}
         onExport={handleExport}
         onImport={handleImport}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
       />
-
-      <Footer />
     </div>
   )
 }

@@ -1,0 +1,82 @@
+Change MuralDesk into a clean “canvas mode” experience.
+
+Current problem:
+The UI feels too much like a normal app/dashboard. Items have visible headers/controls and the footer makes it feel like an app. I want it to feel like a clean desktop mural/wallpaper workspace.
+
+Goal:
+- The workspace should be full-screen, clean, and minimal.
+- User-added images/videos/notes/links should look like objects placed on the screen, not app cards.
+- No permanent top strip/header on items.
+- No permanent controls on items.
+- Item controls only appear when the mouse hovers over that specific item.
+- Remove the footer trust text from the visible canvas.
+- Keep the main top toolbar small and floating.
+- Make the toolbar visually minimal like a small floating pill.
+- Optional: auto-hide the toolbar unless the mouse is near the top area.
+- Items should be freely draggable across the full visible workspace.
+- Do not trap items inside a small board container.
+- The canvas should use the full viewport: 100vw / 100vh.
+- Toolbar should float above the canvas and should not reduce draggable area.
+
+Item behavior:
+- When not hovered:
+  - Image shows only image.
+  - Video shows only video.
+  - Note shows only note content.
+  - Link shows only clean link preview.
+  - No drag bar visible.
+  - No delete/duplicate/lock buttons visible.
+  - No color dots visible.
+- When hovered:
+  - Show a small floating mini-toolbar on top/right of the item.
+  - Mini-toolbar includes move handle, lock/unlock, duplicate, delete.
+  - For notes, show color dots only on hover.
+  - For videos, show mute/loop controls only on hover.
+- Selected item can show a subtle outline, but only while selected.
+- Locked items should still show lock state on hover.
+
+Dragging:
+- Make items draggable from the hover mini-toolbar / move handle.
+- If possible, allow dragging from the item itself except where it conflicts with text editing, video controls, or link buttons.
+- Keep resize working.
+- Resize handles should only appear on hover or selection.
+- Position must save exactly and restore after refresh.
+
+Persistence:
+- Do not break IndexedDB media persistence.
+- Do not break localStorage layout persistence.
+- Images/videos must survive refresh.
+- Deletes must stay deleted after refresh.
+- Export/import must still work.
+
+Remove app-like feeling:
+- Remove visible footer from the canvas.
+- Remove large app-style card borders where possible.
+- Use subtle shadows only.
+- Keep background as a clean dark grid/canvas.
+- Avoid dashboard sections, panels, or big explanations once user has items.
+
+Also add:
+- Fullscreen button in the main toolbar.
+- Button should toggle browser fullscreen.
+- Label should change between Fullscreen and Exit Fullscreen.
+- Fullscreen should keep drag/resize/persistence working.
+
+Do not add backend.
+Do not add login.
+Do not add payments.
+Do not rewrite the storage system.
+Make small focused changes.
+
+Test:
+1. Add sample board.
+2. Confirm items look clean with no permanent controls.
+3. Hover item, confirm controls appear.
+4. Drag item across full screen.
+5. Resize item.
+6. Refresh, confirm position and media persist.
+7. Lock item, confirm it cannot move.
+8. Unlock item, confirm it moves again.
+9. Delete item, refresh, confirm it does not return.
+10. Test fullscreen button.
+Report exact files changed and test results.

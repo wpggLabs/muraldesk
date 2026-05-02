@@ -19,7 +19,8 @@ public/
   icon-maskable.svg    — Maskable icon variant for adaptive launchers
   sw.js                — Service worker: app-shell cache (cache-first assets, network-first nav)
 src/
-  App.jsx              — Root: canvas, selection state, keyboard shortcuts, handlers, footer
+  App.jsx              — Root: full-viewport canvas, selection state, keyboard shortcuts,
+                          fullscreen toggle, ambient grid/glow background
   main.jsx             — Entry point; calls registerServiceWorker()
   registerSW.js        — Registers /sw.js only in PROD; unregisters any stale SW in dev
   index.css            — Global CSS variables and reset
@@ -30,14 +31,24 @@ src/
     useBoard.js        — Board state: localStorage layout + IDB media hydration,
                           add/update/remove/duplicate/import/export
   components/
-    Toolbar.jsx        — Top toolbar: Image, Video, Note, Link · Sample, Export, Import · Clear
-    BoardItem.jsx      — Wrapper with drag/resize/lock/duplicate/delete via react-rnd
+    Toolbar.jsx        — Floating pill toolbar (top-center): Image, Video, Note, Link ·
+                          Sample, Export, Import · Fullscreen · Clear. Auto-dims to ~32%
+                          opacity when mouse leaves the top zone, full opacity on hover.
+    BoardItem.jsx      — Free-floating item wrapper. NO permanent header / borders /
+                          controls; subtle hover/select outline; floating mini-toolbar
+                          (lock / duplicate / delete) appears top-right only on hover or
+                          select. Whole item draggable except `.no-drag, textarea, input,
+                          button, a, video` (forwarded to react-draggable via react-rnd's
+                          `cancel` prop). Resize handles inside the wrapper at corners
+                          (zIndex 25, above mini-toolbar) so corner clicks always resize.
     ImageCard.jsx      — Image display card
-    VideoCard.jsx      — Video player card (loop, mute controls)
-    NoteCard.jsx       — Editable text note card with color swatches
-    LinkCard.jsx       — URL link card with favicon and Open button (http/https only — defensive)
-    EmptyState.jsx     — Shown when board is empty: pitch + Sample CTA + Add note + keyboard hint
-    Footer.jsx         — Bottom-center "Local-first · No account · Offline storage" trust text
+    VideoCard.jsx      — Video player; mute / loop controls bottom-left, hover-only.
+                          Video has `pointer-events:none` so the whole video surface drags.
+    NoteCard.jsx       — Editable text note. Color swatches top-left, hover-only.
+                          Top padding (34px) leaves room for the floating mini-toolbar.
+    LinkCard.jsx       — URL link card with favicon. Open anchor marked `.no-drag`.
+                          Top padding (34px) leaves room for the mini-toolbar.
+    EmptyState.jsx     — Shown when board is empty: pitch + Sample CTA + Add note + keyboard hint.
 ```
 
 ## Persistence (do not touch without explicit reason)
@@ -50,7 +61,18 @@ src/
 - `duplicateItem` for media items copies the IDB blob to a fresh id (independent of the original); rolls back the IDB write if URL creation fails.
 - `importLayout` deletes IDB entries that are no longer referenced by the new layout, then re-hydrates referenced media; uses an import token so a slow hydrate from an older import can't patch stale state.
 
-## Polish features (buildathon demo)
+## Canvas mode (current visual model)
+
+The workspace is intentionally a near-empty mural rather than a typical app UI:
+
+- **Full-viewport canvas** — items render directly into the root and use `bounds="parent"` so they can move anywhere in the visible viewport. There is no app header, no footer, no permanent panels.
+- **Items look like free-floating objects** — no constant border, no header strip, no permanent type label. Default state is content + a soft drop shadow only.
+- **Hover/select reveals everything** — a subtle 1-2px outline plus a small floating mini-toolbar (lock / duplicate / delete) at the top-right of the item. Note color swatches and video mute/loop controls also fade in on hover only.
+- **Drag from anywhere** — the whole item is draggable except interactive bits. The exclusion list lives in `BoardItem.jsx` as `DRAG_CANCEL = '.no-drag, textarea, input, button, a, video'` and is forwarded via react-rnd's `cancel` prop. The mini-toolbar, note color picker, video controls, and link "Open" anchor all wear `.no-drag`.
+- **Resize handles** — invisible by default, fade in with the same hover/select rule. Corner handles sit *inside* the wrapper at `right:0 / bottom:0` with `zIndex:25` (above the mini-toolbar at z:20) so corner clicks always start a resize, never a drag. Edge handles are 6px and offset slightly outside (`-3`).
+- **Floating pill toolbar** — top-center, rounded 999px with backdrop blur. Includes a Fullscreen / Exit Fullscreen button (uses the Fullscreen API on `document.documentElement`; `fullscreenchange` listener keeps the label honest if the user hits Esc). Auto-dims to ~32% opacity when the mouse drifts below ~110px from the top.
+
+## Polish features
 
 - **Selection** — click a card to select; visible accent outline + glow.
 - **Keyboard shortcuts** — `Esc` deselects, `Delete` / `Backspace` removes the selected card. Skipped while focus is in an `input`, `textarea`, or `contentEditable` so note editing isn't broken.
@@ -58,7 +80,6 @@ src/
 - **Duplicate (⧉)** — clones any card; for media items it copies the IDB blob to a fresh id.
 - **Lock (🔒/🔓)** — locked cards can't be dragged or resized.
 - **Export / Import JSON** — round-trips layout. Import is capped at 5 MB / 500 items, validates structure, and sanitizes link URLs (drops `javascript:` and other non-http(s) protocols).
-- **Footer** — subtle bottom-center trust text.
 
 ## PWA notes
 
