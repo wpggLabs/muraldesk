@@ -179,4 +179,4 @@ Buildathon project. Working MVP across web (PWA) and Windows (Electron + NSIS in
 
 ## License
 
-The repository is intended for buildathon submission and personal use; a permissive license will be added before any wider release.
+Released under the MIT License — see LICENSE.
