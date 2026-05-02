@@ -1,0 +1,93 @@
+Fix the transparent Electron overlay behavior.
+
+Current problems:
+1. When the transparent Electron window is focused, I cannot click anything behind MuralDesk. The invisible window blocks desktop clicks.
+2. The MuralDesk toolbar hides/slips away when I move my mouse toward it.
+3. The canvas still does not feel like it fills the whole window. I want to place images/videos/notes/links anywhere inside the current MuralDesk window.
+
+Goal:
+Make MuralDesk feel like a transparent desktop overlay, not an invisible blocking app window.
+
+PART 1 — CLICK-THROUGH EMPTY AREAS
+Electron only.
+- Transparent empty canvas areas should allow clicks to pass through to the desktop/apps behind MuralDesk.
+- Use BrowserWindow.setIgnoreMouseEvents(true, { forward: true }) when the pointer is NOT over an interactive MuralDesk element.
+- Turn click-through OFF when pointer is over:
+  - main toolbar
+  - toolbar reveal zone
+  - pinned item
+  - item mini-toolbar
+  - resize handles
+  - dialogs/modals
+  - file inputs/buttons
+- Turn click-through back ON when pointer leaves those interactive areas.
+- Add narrow IPC only:
+  - renderer asks main process to set click-through true/false
+  - main applies it only to the current BrowserWindow.
+- Keep a reliable close/minimize button working.
+- Keep Esc behavior working.
+
+PART 2 — FIX TOOLBAR SLIPPING AWAY
+- Make toolbar reveal zone larger and easier to reach.
+- Use top reveal zone around 80px high across the window.
+- Add a hide delay/grace period around 600–1000ms so toolbar does not disappear while the user moves toward it.
+- Toolbar should stay visible while:
+  - mouse is inside top reveal zone
+  - mouse is over toolbar
+  - mouse is over any pinned item
+  - a dialog is open
+  - board is empty
+- Toolbar should hide only after the cursor leaves all those areas and the delay expires.
+- Do not let toolbar flicker.
+
+PART 3 — TRUE FULL-WINDOW CANVAS
+- Inspect App.jsx, BoardItem.jsx, index.css, and any wrapper styles.
+- Make the Electron canvas fill the full current window:
+  - html/body/#root width: 100vw height: 100vh
+  - main app/canvas fixed or absolute inset: 0
+  - no max-width
+  - no centered app container
+  - no padding/margin limiting item movement
+  - overflow hidden if needed
+- Items should be draggable/resizable anywhere inside the visible MuralDesk window.
+- If react-rnd uses bounds="parent", make sure parent is exactly full window.
+- If needed, use bounds="window" or remove incorrect bounds.
+- Positions should save exactly and restore after reopen.
+
+PART 4 — DO NOT BREAK EXISTING FEATURES
+Do not touch storage logic unless absolutely necessary.
+Do not break:
+- IndexedDB media persistence
+- localStorage layout persistence
+- image upload
+- video upload
+- YouTube embeds
+- direct video/image links
+- notes
+- drag
+- resize
+- lock/unlock
+- duplicate
+- delete
+- export/import
+- web/PWA version
+
+WEB/PWA SAFETY
+- Web/PWA should stay unchanged.
+- Click-through and transparent overlay behavior should be Electron-only.
+
+TEST ON WINDOWS BEHAVIOR EXPECTED
+1. Launch Electron app.
+2. Empty board shows toolbar.
+3. Click outside toolbar on transparent area — desktop/app behind should receive the click.
+4. Move mouse to top zone — toolbar appears and stays stable.
+5. Add image.
+6. Toolbar hides after adding item.
+7. Hover image — item controls and toolbar appear.
+8. Drag image anywhere inside the MuralDesk window.
+9. Resize image.
+10. Move mouse away — toolbar hides, empty transparent areas become click-through.
+11. Add video/note/link and confirm same behavior.
+12. Close/reopen — items persist.
+
+Report exact files changed and any limitations.

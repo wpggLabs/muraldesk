@@ -253,6 +253,28 @@ ipcMain.handle('window:close', (_event) => {
   return true
 })
 
+// Click-through for transparent areas. When `ignore` is true the OS
+// passes mouse clicks through MuralDesk to whatever is behind it (the
+// user's desktop / other apps). When `forward: true`, the renderer
+// still receives mouse-MOVE events while ignoring clicks, which is how
+// it can detect the cursor entering an interactive zone (toolbar,
+// pinned item, dialog) and call back asking for click-through OFF.
+//
+// We resolve the BrowserWindow from event.sender, so a renderer can
+// only flip click-through on its own host window — never on another
+// MuralDesk window or an arbitrary BrowserWindow.
+ipcMain.handle('window:set-ignore-mouse-events', (event, ignore, opts) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  if (!win || win.isDestroyed()) return false
+  // Only honor the documented `forward` flag; reject arbitrary objects
+  // so a misbehaving renderer can't smuggle unexpected options through.
+  const safeOpts = opts && typeof opts === 'object' && opts.forward
+    ? { forward: true }
+    : undefined
+  win.setIgnoreMouseEvents(!!ignore, safeOpts)
+  return true
+})
+
 // ---- App lifecycle ---------------------------------------------------------
 
 app.whenReady().then(() => {

@@ -92,6 +92,13 @@ export default function BoardItem({
 
   return (
     <Rnd
+      // muraldesk-card-rnd marks this rectangle as an interactive
+      // zone for the Electron click-through hook
+      // (src/hooks/useElectronClickThrough.js): when the cursor is
+      // anywhere over a card, the OS-level click-through is OFF so
+      // drag / resize / click work as expected. Outside any card the
+      // transparent canvas becomes click-through.
+      className="muraldesk-card-rnd"
       position={{ x: item.x, y: item.y }}
       size={{ width: item.width, height: item.height }}
       onDragStop={handleDragStop}

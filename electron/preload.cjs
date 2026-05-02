@@ -35,4 +35,13 @@ contextBridge.exposeInMainWorld('muraldesk', {
   // the only IPC channels that can mutate window state besides fullscreen.
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
+  // Click-through for the transparent overlay. Pass `{ forward: true }`
+  // when ignoring so the renderer keeps receiving mousemove events and
+  // can flip click-through back off the moment the cursor enters an
+  // interactive zone. The opts object is sanitized in main.
+  setIgnoreMouseEvents: (ignore, opts) => ipcRenderer.invoke(
+    'window:set-ignore-mouse-events',
+    !!ignore,
+    opts && typeof opts === 'object' ? { forward: !!opts.forward } : undefined,
+  ),
 })
