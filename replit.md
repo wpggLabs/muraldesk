@@ -15,8 +15,10 @@ src/
   App.jsx              — Root component, board canvas, handlers
   main.jsx             — Entry point
   index.css            — Global CSS variables and reset
+  lib/
+    mediaStore.js      — IndexedDB wrapper for image/video blob persistence
   hooks/
-    useBoard.js        — Board state management + localStorage persistence
+    useBoard.js        — Board state, localStorage layout + IDB media hydration
   components/
     Toolbar.jsx        — Top toolbar: add image, video, note, link, clear
     BoardItem.jsx      — Wrapper with drag/resize/delete via react-rnd
@@ -26,6 +28,13 @@ src/
     LinkCard.jsx       — URL link card with favicon and open button
     EmptyState.jsx     — Shown when board is empty
 ```
+
+## Persistence
+
+- **Layout (positions, sizes, note text, link metadata, z-index)** → `localStorage` key `muraldesk-board`. Saved on every state change.
+- **Image / video binaries** → IndexedDB (`muraldesk` db, `media` store), keyed by item id. The card's transient `blob:` `src` is stripped before persisting layout, then re-created via `URL.createObjectURL` when items hydrate on mount.
+- Object URLs are revoked on item removal, board clear, and unmount to avoid leaks. Hydration is cancellable so React 18 StrictMode's double-mount doesn't leak URLs.
+- If `saveBlob` fails (quota / private mode), the card is added without a `mediaId`, so it stays session-only rather than persisting a broken reference.
 
 ## Features
 

@@ -43,6 +43,16 @@ export default function BoardItem({ item, onUpdate, onRemove, onFocus }) {
       minHeight={80}
       bounds="parent"
       dragHandleClassName="drag-handle"
+      resizeHandleStyles={{
+        bottomRight: { width: 18, height: 18, right: 0, bottom: 0 },
+        bottomLeft: { width: 18, height: 18, left: 0, bottom: 0 },
+        topRight: { width: 18, height: 18, right: 0, top: 0 },
+        topLeft: { width: 18, height: 18, left: 0, top: 0 },
+        right: { width: 8, right: -2 },
+        left: { width: 8, left: -2 },
+        top: { height: 8, top: -2 },
+        bottom: { height: 8, bottom: -2 },
+      }}
     >
       <div
         className="board-item"
@@ -107,6 +117,27 @@ export default function BoardItem({ item, onUpdate, onRemove, onFocus }) {
         <div style={{ width: '100%', height: '100%' }}>
           {renderContent()}
         </div>
+        {hovered && (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              right: 2,
+              bottom: 2,
+              width: 14,
+              height: 14,
+              pointerEvents: 'none',
+              opacity: 0.7,
+              color: 'var(--text-muted)',
+              fontSize: 14,
+              lineHeight: '14px',
+              textAlign: 'right',
+              userSelect: 'none',
+            }}
+          >
+            ⌟
+          </div>
+        )}
       </div>
     </Rnd>
   )
