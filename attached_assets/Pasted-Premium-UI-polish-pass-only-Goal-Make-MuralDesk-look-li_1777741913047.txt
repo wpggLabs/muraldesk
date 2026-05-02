@@ -1,0 +1,110 @@
+Premium UI polish pass only.
+
+Goal:
+Make MuralDesk look like a premium, beautiful, polished desktop app in every visible detail.
+
+Do not break existing functionality.
+Do not rewrite the app.
+Do not change the core architecture unless required for styling.
+Do not remove transparent overlay behavior.
+Do not make the app feel like a normal website.
+It should feel like a modern native desktop tool.
+
+Polish requirements:
+
+1. Visual style
+- Premium dark glass UI.
+- Transparent wallpaper/canvas area stays clean.
+- Only controls, tabs, floating panels, and media cards should be visible.
+- Use soft dark surfaces, subtle borders, good shadows, clean spacing.
+- Avoid cheap gradients, neon glow, clutter, or random colors.
+- Make it feel like Raycast / Arc / Linear / Apple-style desktop polish.
+
+2. Color system
+Create a consistent color system:
+- Background transparent where needed.
+- Main surface: near-black / deep slate.
+- Border: subtle white with low opacity.
+- Text primary: clean white.
+- Text secondary: muted gray.
+- Accent: one premium color only, like electric blue, violet, or cyan.
+- Danger color only for delete/remove.
+- Hover and active states must feel smooth and intentional.
+
+3. Spacing
+Fix all spacing:
+- Consistent padding.
+- Consistent gaps.
+- No cramped buttons.
+- No random margins.
+- Media cards should have breathing room.
+- Floating tab should be easy to hover and click.
+- Controls should not feel tiny or messy.
+
+4. Typography
+- Use clean modern font stack.
+- Strong hierarchy:
+  - main labels bold
+  - secondary labels muted
+  - button text readable
+- No ugly default browser fonts.
+- No oversized random text.
+
+5. Floating tab
+Make the floating tab look premium:
+- Rounded pill/card shape.
+- Subtle blur/glass effect if possible.
+- Smooth hover open/close behavior.
+- Clear label/icon.
+- Easy to click.
+- Must not slip away when user moves mouse toward it.
+- Add a small hover bridge / safe zone if needed so it stays open while user moves cursor.
+
+6. Media items
+Make added images/videos/text look premium:
+- Rounded corners.
+- Subtle border.
+- Soft shadow.
+- Resize handles should be visible but not ugly.
+- Drag state should feel smooth.
+- Selected item should have a clean accent outline.
+- Hover state should show controls clearly.
+- Delete/close button should be small, clean, and placed consistently.
+
+7. Empty state
+When no media is added, show a beautiful minimal empty state:
+- Small centered or floating hint.
+- Example text:
+  “Drop images, videos, links, or notes anywhere”
+- Keep it subtle.
+- Do not block the transparent canvas.
+
+8. Animations
+Add subtle animations:
+- Smooth fade/slide for panels.
+- Smooth hover transitions.
+- Smooth selected state.
+- Do not add heavy animations.
+- Keep app fast.
+
+9. Full-screen mural feel
+The app should feel like an open infinite desk/canvas:
+- User can place media anywhere inside the app window.
+- Media should not be restricted to a small area.
+- Canvas should fill the entire app window.
+- Controls should float above the canvas, not take layout space.
+
+10. Quality checks
+After changes:
+- Confirm window is clickable normally.
+- Confirm media can be dragged across the full visible window.
+- Confirm floating tab remains usable.
+- Confirm transparent background still works.
+- Confirm added media does not disappear unexpectedly.
+- Confirm no layout overflow or blocked clicks.
+- Confirm app still runs.
+
+Return:
+- Short summary of files changed.
+- Any bugs found.
+- Confirm the app still builds/runs.

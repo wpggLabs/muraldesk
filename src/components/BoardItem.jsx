@@ -10,6 +10,25 @@ import LinkCard from './LinkCard'
 // via react-rnd's `cancel` prop.
 const DRAG_CANCEL = '.no-drag, textarea, input, button, a, video'
 
+// Allowed opacity steps for the cycle button. High → low; clicking the
+// button cycles through these in order and wraps. The values are stored
+// raw on the item (`item.opacity`) and applied directly to the content
+// layer's CSS `opacity`. Existing items without the field default to 1
+// at read time — we never write the default back, so old layouts stay
+// byte-identical until the user touches the control.
+const OPACITY_STEPS = [1, 0.75, 0.5, 0.3]
+
+// Map an opacity value (any number 0..1) to a single-glyph fill icon so
+// the button visually reflects the current state without needing extra
+// chars / a percentage label. Buckets favor the higher value when the
+// opacity is between two steps (e.g. 0.6 → ◐ for 50%, 0.85 → ◕ for 75%).
+function opacityIcon(o) {
+  if (o >= 0.875) return '●' // 100%
+  if (o >= 0.625) return '◕' // 75%
+  if (o >= 0.4)   return '◐' // 50%
+  return '◔'                  // 30%
+}
+
 export default function BoardItem({
   item,
   selected,
@@ -43,6 +62,29 @@ export default function BoardItem({
       x: pos.x,
       y: pos.y,
     })
+  }
+
+  // Per-item opacity / fit (see OPACITY_STEPS + opacityIcon). Both
+  // controls live in the existing hover-only mini-toolbar, so they
+  // appear and disappear with the rest of the card affordances and
+  // never make the canvas feel app-like.
+  const itemOpacity = typeof item.opacity === 'number' ? item.opacity : 1
+  const itemFit = item.fit === 'contain' ? 'contain' : 'cover'
+  const supportsFit = item.type === 'image' || item.type === 'video'
+
+  function cycleOpacity() {
+    // Find the current step (using a small epsilon so 0.299999...
+    // still matches 0.3 after a JSON round-trip). If the current
+    // value isn't one of our steps (e.g. something an external
+    // import wrote), fall back to step 0 → next will be 0.75.
+    const cur = itemOpacity
+    const idx = OPACITY_STEPS.findIndex((v) => Math.abs(v - cur) < 0.001)
+    const next = OPACITY_STEPS[(idx === -1 ? 0 : idx + 1) % OPACITY_STEPS.length]
+    onUpdate(item.id, { opacity: next })
+  }
+
+  function toggleFit() {
+    onUpdate(item.id, { fit: itemFit === 'cover' ? 'contain' : 'cover' })
   }
 
   function renderContent() {
@@ -132,22 +174,43 @@ export default function BoardItem({
           width: '100%',
           height: '100%',
           position: 'relative',
-          borderRadius: 'var(--radius)',
-          overflow: 'hidden',
-          boxShadow: outline,
           // Keep default cursor on idle so the canvas feels like a mural, not
           // a draggable dashboard. We avoid setting 'grab' here so it never
           // visually competes with the resize handles' cursors at the corners.
           cursor: locked ? 'default' : 'default',
-          transition: 'box-shadow 0.18s ease',
         }}
       >
-        {/* Item content fills the whole surface — no header strip. */}
-        <div style={{ width: '100%', height: '100%' }}>
-          {renderContent()}
+        {/*
+          Faded content layer. The shadow + rounded clipping live HERE
+          (not on the outer wrapper) so they fade together with the
+          content when item.opacity < 1. The mini-toolbar and resize
+          glyph are siblings of this layer — they sit OUTSIDE the
+          opacity cascade so the user can always see + click the
+          controls even on a 30%-opacity item. CSS opacity is
+          multiplicative with parent so the only correct way to
+          "exempt" the toolbar is to host it on a separate sibling
+          (which we do below).
+        */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 'var(--radius)',
+            overflow: 'hidden',
+            boxShadow: outline,
+            opacity: itemOpacity,
+            transition: 'opacity 0.15s ease, box-shadow 0.18s ease',
+          }}
+        >
+          {/* Item content fills the whole surface — no header strip. */}
+          <div style={{ width: '100%', height: '100%' }}>
+            {renderContent()}
+          </div>
         </div>
 
-        {/* Floating mini-toolbar — visible only on hover or selection. */}
+        {/* Floating mini-toolbar — visible only on hover or selection.
+            Sits outside the faded content layer so its readability is
+            independent of item.opacity. */}
         <div
           className="no-drag"
           style={{
@@ -181,6 +244,29 @@ export default function BoardItem({
           >
             ⧉
           </IconBtn>
+          {/* Opacity cycle — applies to all item types. The glyph
+              visually mirrors the current step (●/◕/◐/◔) so users
+              can read the level at a glance; the title shows the
+              precise percentage and how to advance. */}
+          <IconBtn
+            title={`Opacity ${Math.round(itemOpacity * 100)}% — click to cycle`}
+            onClick={cycleOpacity}
+            highlight={itemOpacity < 1}
+          >
+            {opacityIcon(itemOpacity)}
+          </IconBtn>
+          {/* Fit toggle — image/video only. Highlighted in 'contain'
+              mode (the non-default state) so the user can see at a
+              glance which items are letterboxed. */}
+          {supportsFit && (
+            <IconBtn
+              title={`Fit: ${itemFit} — click to toggle`}
+              onClick={toggleFit}
+              highlight={itemFit === 'contain'}
+            >
+              {itemFit === 'cover' ? '▣' : '▢'}
+            </IconBtn>
+          )}
           <IconBtn
             title="Delete"
             onClick={() => onRemove(item.id)}
