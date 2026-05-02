@@ -5,15 +5,15 @@ import Toolbar from './components/Toolbar'
 import EmptyState from './components/EmptyState'
 
 export default function App() {
-  const { items, addItem, updateItem, removeItem, bringToFront, clearBoard } = useBoard()
+  const { items, addItem, addMediaItem, updateItem, removeItem, bringToFront, clearBoard } = useBoard()
 
-  const handleAddImage = useCallback((src, label) => {
-    addItem('image', { src, label, width: 300, height: 220 })
-  }, [addItem])
+  const handleAddImage = useCallback((file) => {
+    addMediaItem('image', file, { width: 300, height: 220 })
+  }, [addMediaItem])
 
-  const handleAddVideo = useCallback((src, label) => {
-    addItem('video', { src, label, width: 360, height: 240, loop: true, muted: true })
-  }, [addItem])
+  const handleAddVideo = useCallback((file) => {
+    addMediaItem('video', file, { width: 360, height: 240, loop: true, muted: true })
+  }, [addMediaItem])
 
   const handleAddNote = useCallback(() => {
     addItem('note', { text: '', width: 220, height: 180, color: '#2a2a3a' })

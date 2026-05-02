@@ -11,16 +11,14 @@ export default function Toolbar({ onAddImage, onAddVideo, onAddNote, onAddLink, 
   function handleImageFile(e) {
     const file = e.target.files[0]
     if (!file) return
-    const src = URL.createObjectURL(file)
-    onAddImage(src, file.name)
+    onAddImage(file)
     e.target.value = ''
   }
 
   function handleVideoFile(e) {
     const file = e.target.files[0]
     if (!file) return
-    const src = URL.createObjectURL(file)
-    onAddVideo(src, file.name)
+    onAddVideo(file)
     e.target.value = ''
   }
 
