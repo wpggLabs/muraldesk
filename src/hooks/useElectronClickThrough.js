@@ -17,21 +17,42 @@ const INTERACTIVE_SELECTOR =
  * on and off interactive parts of the UI.
  *
  * Strategy:
- *   - Start with click-through OFF (the window is interactive on
- *     launch, so a user clicking the toolbar immediately works even
- *     before any mousemove is observed).
+ *   - On mount, ask the main process for the current OS cursor
+ *     position translated into renderer client coords (via the
+ *     `window:get-cursor-position-in-window` IPC). Run a real
+ *     elementFromPoint hit-test at that position to set the initial
+ *     click-through state correctly — without this, we'd be guessing
+ *     and either the very first desktop click (if we default to OFF)
+ *     or the very first toolbar/card click (if we default to ON)
+ *     would be swallowed before any mousemove arrived to fix state.
+ *     During the brief async window between mount and the IPC
+ *     resolving (~10–30 ms), the window stays in its native default
+ *     of "interactive" — that's the safer side of the tradeoff
+ *     because losing a millisecond of desktop pass-through is
+ *     invisible, while losing a millisecond of toolbar response
+ *     would be felt.
  *   - On every mousemove, hit-test with document.elementFromPoint.
  *     If the topmost element belongs to an interactive zone, click-
  *     through is OFF; otherwise it's ON with `{ forward: true }` so
  *     mousemove keeps flowing into the renderer (otherwise once we
- *     turn click-through on we'd never hear about the cursor entering
- *     a card again, and the window would stay click-through forever).
+ *     turn click-through on we'd never hear about the cursor
+ *     entering a card again).
+ *   - While any mouse button is held (`e.buttons !== 0`) the hit-test
+ *     is skipped entirely so an in-flight drag/resize gesture from
+ *     react-rnd or a window-drag from the toolbar can never be
+ *     aborted by a mid-gesture click-through flip. mouseup re-runs
+ *     the hit-test so click-through engages immediately when the
+ *     gesture ends over an empty area.
  *   - Diff the IPC: only send on transitions, not every mousemove.
  *
  * Web/PWA build is a no-op (no `window.muraldesk` bridge, hook simply
  * returns).
  */
 export function useElectronClickThrough(isElectron) {
+  // Track current OS-level state. Initialized to false because the
+  // BrowserWindow itself is created with click-through OFF by Electron;
+  // we'll immediately flip it ON below to match our renderer-side
+  // expectation that empty transparent areas pass clicks through.
   const ignoringRef = useRef(false)
 
   useEffect(() => {
@@ -55,10 +76,58 @@ export function useElectronClickThrough(isElectron) {
       }
     }
 
-    // Default: window is interactive on mount. The first mousemove
-    // will flip it to click-through if the cursor is over an empty
-    // transparent area.
-    applyIgnore(false)
+    // Cancel pending async work on unmount so we never call
+    // applyIgnore after the effect has been cleaned up.
+    let cancelled = false
+
+    // Run a real hit-test at the current OS cursor position before any
+    // mousemove fires, so the initial click-through state is always
+    // correct. Until this resolves the window stays in its native
+    // "interactive" default (Electron's BrowserWindow ships with
+    // setIgnoreMouseEvents(false) by default).
+    function runHitTestAt(x, y) {
+      const el = document.elementFromPoint(x, y)
+      if (!el) {
+        applyIgnore(true)
+        return
+      }
+      const interactive = el.closest(INTERACTIVE_SELECTOR)
+      applyIgnore(!interactive)
+    }
+
+    if (typeof bridge.getCursorPositionInWindow === 'function') {
+      bridge.getCursorPositionInWindow().then((pos) => {
+        if (cancelled) return
+        if (
+          pos &&
+          typeof pos.x === 'number' &&
+          typeof pos.y === 'number' &&
+          // Only trust positions that land inside the viewport. A
+          // negative or out-of-bounds value (cursor on a different
+          // monitor, or sitting in the OS chrome) gets the same
+          // treatment as elementFromPoint returning null: click-
+          // through ON.
+          pos.x >= 0 &&
+          pos.y >= 0 &&
+          pos.x < window.innerWidth &&
+          pos.y < window.innerHeight
+        ) {
+          runHitTestAt(pos.x, pos.y)
+        } else {
+          applyIgnore(true)
+        }
+      }).catch(() => {
+        // IPC failed; fall back to click-through ON which matches the
+        // user's primary complaint ("clicks behind MuralDesk are
+        // blocked"). Toolbar/card clicks still work as soon as the
+        // cursor moves onto them.
+        if (!cancelled) applyIgnore(true)
+      })
+    } else {
+      // Older preload without the cursor-position bridge. Default to
+      // click-through ON so empty-area desktop clicks still work.
+      applyIgnore(true)
+    }
 
     function onMove(e) {
       // While any mouse button is held the user is mid-gesture —
@@ -109,6 +178,7 @@ export function useElectronClickThrough(isElectron) {
     window.addEventListener('mouseup', onUp, { passive: true })
 
     return () => {
+      cancelled = true
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
       // On unmount / HMR, leave the window interactive. Otherwise a
