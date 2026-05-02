@@ -13,11 +13,32 @@
 //   navigating away from the app.
 // - Force the renderer into a sandboxed, contextIsolated browser context.
 
-const { app, BrowserWindow, ipcMain, screen, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, screen, shell, Tray, Menu, nativeImage } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 
 const isDev = !app.isPackaged
+
+// ---- System tray state -----------------------------------------------------
+//
+// MuralDesk's window is transparent + click-through, so the tray is the
+// user's primary, always-reachable handle on the app: show / hide / toggle
+// Desktop Mode / quit. Module-scoped so the tray menu's click handlers
+// always operate on the current main window (which can be re-created on
+// macOS dock reactivation), and so other lifecycle hooks can reach the
+// `isQuitting` flag without juggling closures.
+//
+// `isQuitting` distinguishes "user closed the window" (intercept → hide
+// to tray) from "user really wants to quit" (Quit menu, before-quit, OS
+// shutdown). The close interceptor checks this flag.
+//
+// `trayMenuRefresh` is set by createTray() to a closure that rebuilds the
+// context menu, so we can keep the "Toggle Desktop Mode" label in sync
+// with the live overlay state regardless of whether the toggle came from
+// the renderer or the tray itself.
+let tray = null
+let isQuitting = false
+let trayMenuRefresh = null
 
 // ---- Window state persistence ----------------------------------------------
 //
@@ -183,7 +204,22 @@ function createWindow() {
   win.on('move', scheduleSave)
   win.on('maximize', scheduleSave)
   win.on('unmaximize', scheduleSave)
-  win.on('close', persistGeometry)
+  // Close handler: persist geometry first, then — if a tray is alive
+  // and the user hasn't explicitly chosen to quit (Quit menu item /
+  // app `before-quit`) — intercept the close and hide to tray instead
+  // of destroying the window. This is what makes the toolbar's X
+  // button and Alt+F4 / clicking the (frameless) close affordance
+  // feel like "tucking away" the mural rather than tearing it down.
+  // The user can always re-open via the tray icon click or the
+  // tray menu's "Show MuralDesk" item; "Quit MuralDesk" sets
+  // isQuitting and lets the close proceed normally.
+  win.on('close', (e) => {
+    persistGeometry()
+    if (tray && !isQuitting && !win.isDestroyed()) {
+      e.preventDefault()
+      win.hide()
+    }
+  })
 
   // NOTE: we deliberately do NOT subscribe to `enter-full-screen` /
   // `leave-full-screen` events anymore. Desktop Mode is implemented as
@@ -277,6 +313,12 @@ function emitOverlayChanged(win, on) {
   } catch {
     // Renderer not ready yet; the renderer will sync via isFullscreen()
     // on its first IPC call after mount.
+  }
+  // Keep the tray menu's "Toggle Desktop Mode" label in sync. Cheap —
+  // builds and assigns a small Menu template — and runs only when
+  // overlay state actually flips.
+  if (typeof trayMenuRefresh === 'function') {
+    try { trayMenuRefresh() } catch { /* tray was destroyed mid-flip; ignore */ }
   }
 }
 
@@ -437,15 +479,185 @@ ipcMain.handle('window:get-cursor-position-in-window', (event) => {
   }
 })
 
+// ---- System tray -----------------------------------------------------------
+//
+// All tray menu handlers resolve the live window via the module-level
+// `mainWindow` rather than a captured argument, because `mainWindow` can
+// be re-created (e.g. macOS dock reactivation after window-all-closed),
+// and we want the tray to keep working across that lifecycle.
+//
+// If tray creation fails — e.g. headless Linux, missing icon file,
+// platform without StatusItem support — we log and leave `tray = null`.
+// The close handler's `if (tray && ...)` gate then no-ops, so the user
+// always gets normal close behavior as a fallback. There is no path
+// where the user gets "stuck" with no way to quit.
+
+function showMainWindow() {
+  // If the window was hidden to tray, restore-and-focus. If it was
+  // destroyed (rare — only after explicit quit attempts that didn't
+  // complete), re-create it.
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow()
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function hideMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.hide()
+}
+
+function toggleDesktopModeFromTray() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    // No live window — show one first, then enter overlay on the next tick.
+    createWindow()
+    if (mainWindow) {
+      mainWindow.once('ready-to-show', () => enterOverlayDisplay(mainWindow))
+    }
+    return
+  }
+  // The overlay is meaningless on a hidden window (the user wouldn't see
+  // it). Surface the window first, then toggle.
+  if (!mainWindow.isVisible()) showMainWindow()
+  if (inOverlayDisplay) exitOverlayDisplay(mainWindow)
+  else enterOverlayDisplay(mainWindow)
+}
+
+function buildTrayMenu() {
+  return Menu.buildFromTemplate([
+    { label: 'Show MuralDesk', click: showMainWindow },
+    { label: 'Hide MuralDesk', click: hideMainWindow },
+    { type: 'separator' },
+    {
+      // Label reflects the live overlay state so the user always sees
+      // the action they'd be taking. emitOverlayChanged() rebuilds the
+      // menu whenever this flips from any source.
+      label: inOverlayDisplay ? 'Exit Desktop Mode' : 'Enter Desktop Mode',
+      click: toggleDesktopModeFromTray,
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit MuralDesk',
+      click: () => {
+        // Mark the quit as user-initiated so the close interceptor
+        // lets the window actually close instead of hiding to tray.
+        isQuitting = true
+        app.quit()
+      },
+    },
+  ])
+}
+
+function createTray() {
+  // Load the bundled tray icon. `electron/tray-icon.png` is a 32x32 RGBA
+  // PNG with a transparent background and a MuralDesk-purple rounded
+  // square; on macOS the OS auto-templates it for dark/light menu bars.
+  //
+  // If the icon is missing or unreadable, we INTENTIONALLY refuse to
+  // create the tray and return null. Reason: the close button hides
+  // to tray when `tray` is truthy, so creating an invisible/empty
+  // tray would strand the user — they can't see the tray icon to
+  // re-open or quit, and the close button no longer quits either.
+  // Returning null here makes the close handler fall through to the
+  // OS default (= quit on non-macOS), which always leaves the user
+  // a way out.
+  const iconPath = path.join(__dirname, 'tray-icon.png')
+  let image = null
+  try {
+    image = nativeImage.createFromPath(iconPath)
+  } catch {
+    image = null
+  }
+  if (!image || image.isEmpty()) {
+    console.warn('MuralDesk: tray icon missing or empty at', iconPath, '— tray disabled, close button will quit normally.')
+    return null
+  }
+
+  const t = new Tray(image)
+  t.setToolTip('MuralDesk')
+  t.setContextMenu(buildTrayMenu())
+
+  // Keep the menu's "Enter / Exit Desktop Mode" label in sync with
+  // overlay state. Stored module-globally so emitOverlayChanged() can
+  // call it without needing a reference to `t`.
+  trayMenuRefresh = () => {
+    if (t.isDestroyed && t.isDestroyed()) return
+    try { t.setContextMenu(buildTrayMenu()) } catch { /* tray gone; ignore */ }
+  }
+
+  // Single-click on tray (Windows / Linux convention) toggles visibility.
+  // On macOS this fires for left-click on the menu-bar icon; the context
+  // menu is also reachable via the standard right-click / two-finger
+  // tap, so behavior matches platform expectations.
+  t.on('click', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      showMainWindow()
+      return
+    }
+    if (mainWindow.isVisible() && !mainWindow.isMinimized()) {
+      // Already up — bring to front (helps when MuralDesk was visible
+      // but behind another app).
+      mainWindow.focus()
+    } else {
+      showMainWindow()
+    }
+  })
+
+  return t
+}
+
 // ---- App lifecycle ---------------------------------------------------------
 
 app.whenReady().then(() => {
   createWindow()
+  // Tray creation is best-effort. createTray() returns null if the
+  // icon file is missing/empty (so we don't create an invisible tray
+  // that would strand the user); the constructor can also throw on
+  // platforms without a status-area concept (some headless Linux
+  // environments). In either case `tray` stays null and the close
+  // handler gracefully falls back to default close (= quit) behavior,
+  // guaranteeing the user always has a way to exit.
+  try {
+    tray = createTray()
+  } catch (err) {
+    console.warn('MuralDesk: could not create system tray.', err)
+    tray = null
+  }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    else showMainWindow()
   })
 })
 
+// With a tray icon, MuralDesk is intentionally a "background" app: the
+// close button hides to tray and the process stays alive so the tray
+// menu remains reachable. Without a tray (creation failed, or no tray
+// support on this platform) we fall back to the original behavior:
+// quit on last window close everywhere except macOS.
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  if (process.platform === 'darwin') return
+  if (tray && !isQuitting) return
+  app.quit()
+})
+
+// Set the quit flag for ALL legitimate quit triggers — Cmd+Q on macOS,
+// the tray's "Quit MuralDesk" item, OS shutdown / logout, an explicit
+// `app.quit()` call, etc. The window's close handler reads this flag
+// to decide whether to hide-to-tray or actually close.
+app.on('before-quit', () => {
+  isQuitting = true
+})
+
+app.on('will-quit', () => {
+  // Destroy the tray ourselves so the OS doesn't briefly orphan a
+  // tray icon during shutdown. Setting it to null also makes any
+  // late-firing close events fall through to default behavior.
+  if (tray) {
+    try { tray.destroy() } catch { /* ignore */ }
+    tray = null
+  }
+  trayMenuRefresh = null
 })
