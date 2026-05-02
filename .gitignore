@@ -141,3 +141,30 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+
+# Electron / desktop builds
+release/
+releases/
+*.AppImage
+*.dmg
+*.exe
+*.msi
+*.deb
+*.rpm
+
+# Tauri builds
+src-tauri/target/
+
+# Local app data / temp
+tmp/
+temp/
+.cache/
