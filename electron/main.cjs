@@ -135,6 +135,15 @@ function createWindow() {
   //   - Linux: depends on the compositor — most modern WMs (GNOME,
   //     KDE) render transparency correctly; tiling WMs without a
   //     compositor will fall back to opaque.
+  // BrowserWindow icon: shown in the taskbar, Alt-Tab switcher,
+  // and (on Linux) the window manager. In packaged Windows builds
+  // the .exe itself carries `build/icon.ico` (set via electron-builder
+  // `win.icon`); this PNG is what Electron displays at runtime
+  // before the OS-level shortcut/icon takes over, and is the
+  // primary source on Linux. The file ships with the app because
+  // `electron/**/*` is in the `files` glob.
+  const winIcon = path.join(__dirname, 'icon.png')
+
   const win = new BrowserWindow({
     width: stored.width,
     height: stored.height,
@@ -146,6 +155,7 @@ function createWindow() {
     frame: false,
     hasShadow: false,
     backgroundColor: '#00000000',
+    icon: winIcon,
     title: 'MuralDesk',
     autoHideMenuBar: true,
     show: false,

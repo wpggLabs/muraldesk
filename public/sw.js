@@ -1,7 +1,9 @@
 // MuralDesk service worker — basic app-shell cache for installability
 // and offline reload. Bumps cache name on every release.
 const CACHE_PREFIX = 'muraldesk-shell-'
-const CACHE_NAME = `${CACHE_PREFIX}v1`
+// Bumped to v2 for the new branded icon set (SVG + PNG + favicon.ico).
+// Old caches are wiped in the activate handler below.
+const CACHE_NAME = `${CACHE_PREFIX}v2`
 
 const APP_SHELL = [
   '/',
@@ -9,6 +11,11 @@ const APP_SHELL = [
   '/manifest.webmanifest',
   '/icon.svg',
   '/icon-maskable.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/apple-touch-icon.png',
+  '/favicon.ico',
 ]
 
 self.addEventListener('install', (event) => {

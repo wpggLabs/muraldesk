@@ -52,7 +52,14 @@
           "arch": ["x64"]
         }
       ],
+      "icon": "build/icon.ico",
       "artifactName": "MuralDesk-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": false,
