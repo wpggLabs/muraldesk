@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBoard } from './hooks/useBoard'
 import { useDesktopMode } from './hooks/useDesktopMode'
 import { useElectronClickThrough } from './hooks/useElectronClickThrough'
@@ -24,6 +24,22 @@ export default function App() {
   } = useBoard()
 
   const [selectedId, setSelectedId] = useState(null)
+
+  // Imperative ref into Toolbar so the keyboard shortcuts
+  // (Ctrl+Shift+I / V / L) can open the file pickers and link dialog
+  // without lifting the Toolbar's internal refs and dialog state out
+  // of that component. Toolbar exposes this surface via
+  // useImperativeHandle.
+  const toolbarRef = useRef(null)
+
+  // Toolbar visibility override driven by Ctrl+Shift+T (Electron only).
+  //   null   → auto (existing reveal-zone / hover / dialog logic)
+  //   'show' → pinned visible
+  //   'hide' → pinned hidden
+  // Cycles null → 'show' → 'hide' → null. Lives in App rather than
+  // Toolbar so the cycle is observable from the keydown handler and
+  // so the override survives Toolbar re-mounts.
+  const [manualToolbarOverride, setManualToolbarOverride] = useState(null)
 
   // Desktop Canvas Mode + unified fullscreen control. On web this hook
   // wraps the document Fullscreen API; in Electron it talks to the main
@@ -99,8 +115,13 @@ export default function App() {
   // consecutive adds don't perfectly overlap. Outside Desktop Mode
   // we return an empty object so useBoard's existing top-left jitter
   // is preserved (it's appropriate for the small normal window).
-  const spawnPosFor = useCallback((width, height) => {
-    if (!desktopMode) return {}
+  const spawnPosFor = useCallback((width, height, opts = {}) => {
+    // `opts.center: true` forces center placement even outside Desktop
+    // Mode — used by the Ctrl+Shift+N "Add note near center" shortcut
+    // so a keyboard-spawned note lands predictably regardless of
+    // whether the user is in normal-window mode or Desktop Canvas Mode.
+    const wantCenter = desktopMode || !!opts.center
+    if (!wantCenter) return {}
     if (typeof window === 'undefined') return {}
     const cx = (window.innerWidth - width) / 2
     const cy = (window.innerHeight - height) / 2
@@ -133,6 +154,20 @@ export default function App() {
     const h = 180
     addItem('note', {
       text: '', width: w, height: h, color: '#2a2a3a', ...spawnPosFor(w, h),
+    })
+  }, [addItem, spawnPosFor])
+
+  // Variant of handleAddNote used by the Ctrl+Shift+N keyboard shortcut.
+  // Always centers via `{ center: true }`, even outside Desktop Mode,
+  // so a keyboard-spawned note lands in a predictable place no matter
+  // what mode the user is in. The toolbar's "+ Note" button keeps
+  // using the mode-aware handleAddNote so the existing UX is unchanged.
+  const handleAddNoteCentered = useCallback(() => {
+    const w = 220
+    const h = 180
+    addItem('note', {
+      text: '', width: w, height: h, color: '#2a2a3a',
+      ...spawnPosFor(w, h, { center: true }),
     })
   }, [addItem, spawnPosFor])
 
@@ -217,11 +252,29 @@ export default function App() {
   }, [items.length, importLayout])
 
   // Keyboard shortcuts:
-  //   - Delete / Backspace removes the selected card
-  //   - Escape exits Desktop Canvas Mode if active, then deselects
-  //   - Ctrl/Cmd + Shift + F toggles fullscreen (Electron OS fullscreen,
-  //     or browser Fullscreen API on web)
-  // Skip while typing in an input/textarea so note editing still works.
+  //   Always-on (work even while typing in a note):
+  //     - Ctrl/Cmd + Shift + F → toggle fullscreen (Electron Desktop
+  //                              Mode overlay, or web Fullscreen API)
+  //   Electron-only always-on (the same chords clash with browser
+  //   shortcuts on web — Ctrl+Shift+T = Reopen closed tab, +N = New
+  //   incognito, +I = DevTools, +D = Bookmark all tabs, etc — so we
+  //   gate them to the Electron build to avoid advertising broken
+  //   behavior in a normal browser tab):
+  //     - Ctrl/Cmd + Shift + D → toggle Desktop Mode
+  //     - Ctrl/Cmd + Shift + T → cycle toolbar override
+  //                              (auto → show → hide → auto). Lets the
+  //                              user surface the toolbar without
+  //                              moving the mouse when MuralDesk is
+  //                              a click-through transparent overlay.
+  //     - Ctrl/Cmd + Shift + N → add a note near the center of the
+  //                              viewport (independent of Desktop Mode)
+  //     - Ctrl/Cmd + Shift + I → open the image file picker
+  //     - Ctrl/Cmd + Shift + V → open the video file picker
+  //     - Ctrl/Cmd + Shift + L → open the Add-Link dialog
+  //   Editable-gated (skip while typing in an input / textarea so
+  //   note editing keeps working):
+  //     - Escape → exit Desktop Mode if active, then deselect
+  //     - Delete / Backspace → remove the selected card
   useEffect(() => {
     function isEditableTarget(t) {
       if (!t) return false
@@ -229,12 +282,52 @@ export default function App() {
       return tag === 'input' || tag === 'textarea' || t.isContentEditable
     }
     function onKey(e) {
-      // Ctrl/Cmd + Shift + F → fullscreen toggle. Available everywhere,
-      // even while typing — it's a global shortcut.
-      if (e.shiftKey && (e.ctrlKey || e.metaKey) && (e.key === 'F' || e.key === 'f')) {
-        e.preventDefault()
-        toggleFullscreen()
-        return
+      // Ctrl/Cmd + Shift + <letter> chord block. preventDefault is
+      // called per-handler so the OS / browser shortcut never also
+      // fires (e.g. Ctrl+Shift+I would otherwise open Electron's
+      // DevTools in a dev build).
+      if (e.shiftKey && (e.ctrlKey || e.metaKey)) {
+        const k = (e.key || '').toLowerCase()
+        if (k === 'f') {
+          e.preventDefault()
+          toggleFullscreen()
+          return
+        }
+        if (isElectron) {
+          if (k === 'd') {
+            e.preventDefault()
+            toggleDesktopMode()
+            return
+          }
+          if (k === 't') {
+            e.preventDefault()
+            // Tri-state cycle: null → 'show' → 'hide' → null.
+            setManualToolbarOverride((prev) =>
+              prev === null ? 'show' : prev === 'show' ? 'hide' : null,
+            )
+            return
+          }
+          if (k === 'n') {
+            e.preventDefault()
+            handleAddNoteCentered()
+            return
+          }
+          if (k === 'i') {
+            e.preventDefault()
+            toolbarRef.current?.openImagePicker?.()
+            return
+          }
+          if (k === 'v') {
+            e.preventDefault()
+            toolbarRef.current?.openVideoPicker?.()
+            return
+          }
+          if (k === 'l') {
+            e.preventDefault()
+            toolbarRef.current?.openLinkDialog?.()
+            return
+          }
+        }
       }
       if (isEditableTarget(e.target)) return
       if (e.key === 'Escape') {
@@ -248,7 +341,10 @@ export default function App() {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [selectedId, removeItem, desktopMode, setDesktopMode, toggleFullscreen])
+  }, [
+    selectedId, removeItem, desktopMode, setDesktopMode, toggleFullscreen,
+    isElectron, toggleDesktopMode, handleAddNoteCentered,
+  ])
 
   // Click on empty canvas deselects.
   function handleCanvasMouseDown(e) {
@@ -332,6 +428,7 @@ export default function App() {
       ))}
 
       <Toolbar
+        ref={toolbarRef}
         onAddImage={handleAddImage}
         onAddVideo={handleAddVideo}
         onAddNote={handleAddNote}
@@ -349,6 +446,7 @@ export default function App() {
         anyItemHovered={anyItemHovered}
         onMinimizeWindow={handleMinimize}
         onCloseWindow={handleClose}
+        manualOverride={manualToolbarOverride}
       />
     </div>
   )

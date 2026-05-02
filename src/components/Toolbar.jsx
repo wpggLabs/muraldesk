@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 // Reveal-zone height (px from top of viewport). When the cursor is
 // within this band the toolbar shows. The Electron transparent-overlay
@@ -20,7 +20,7 @@ function pickRevealPx({ isElectron, desktopMode }) {
 // grace window for the user to move toward the toolbar.
 const HIDE_DELAY_MS = 700
 
-export default function Toolbar({
+function Toolbar({
   onAddImage,
   onAddVideo,
   onAddNote,
@@ -38,7 +38,15 @@ export default function Toolbar({
   anyItemHovered = false,
   onMinimizeWindow,
   onCloseWindow,
-}) {
+  // Toolbar visibility override driven by App's Ctrl+Shift+T shortcut.
+  //   null   → auto (existing reveal-zone / hover / dialog logic)
+  //   'show' → pinned visible regardless of cursor position
+  //   'hide' → pinned hidden even while hovering an item
+  // Cycled by App.jsx; the toolbar itself never mutates this — App
+  // owns the state so the cycle is observable from the keyboard
+  // handler and so the override survives toolbar re-mounts.
+  manualOverride = null,
+}, ref) {
   const imageInputRef = useRef(null)
   const videoInputRef = useRef(null)
   const importInputRef = useRef(null)
@@ -46,6 +54,19 @@ export default function Toolbar({
   const [linkUrl, setLinkUrl] = useState('')
   const [linkTitle, setLinkTitle] = useState('')
   const [linkDesc, setLinkDesc] = useState('')
+
+  // Imperative handle: lets App.jsx open the file pickers and the link
+  // dialog from keyboard shortcuts (Ctrl+Shift+I / V / L) without
+  // having to lift Toolbar's internal refs and dialog state out of
+  // this component. The link-dialog opener flips internal state, which
+  // already triggers the auto-show path via `linkDialog` in
+  // `autoShow`, so the toolbar reveals itself even if the user fired
+  // the shortcut while it was hidden.
+  useImperativeHandle(ref, () => ({
+    openImagePicker: () => imageInputRef.current?.click(),
+    openVideoPicker: () => videoInputRef.current?.click(),
+    openLinkDialog: () => setLinkDialog(true),
+  }), [])
 
   // Visibility behavior — three layered modes:
   //   1. Web build (default):
@@ -94,11 +115,24 @@ export default function Toolbar({
   // Composite "should the toolbar be visible right now" signal.
   // anyItemHovered only counts in Electron mode — on the web build
   // the toolbar is always present so we don't need this to re-show it.
-  const shouldShow = forceShow
+  const autoShow = forceShow
     || nearTop
     || hovered
     || linkDialog
     || (isElectron && anyItemHovered)
+  // Manual override (Ctrl+Shift+T) beats auto behavior. 'show' pins
+  // the toolbar visible regardless of cursor position; 'hide' pins
+  // it hidden even while hovering an item; null defers to auto. The
+  // 'show' branch still allows linkDialog to keep it visible (since
+  // both resolve to true), so opening the Add-Link dialog while in
+  // 'hide' mode would still hide the toolbar pill — but the dialog
+  // itself is its own fixed-position layer so the user can still
+  // interact with it.
+  const shouldShow = manualOverride === 'show'
+    ? true
+    : manualOverride === 'hide'
+      ? false
+      : autoShow
 
   // Debounced visibility. `revealed` is the actual rendered state.
   // The 700 ms hide-grace only applies in modes where the toolbar
@@ -333,6 +367,8 @@ export default function Toolbar({
           style={{
             position: 'fixed',
             inset: 0,
+            // Above the toolbar pill (z:9999) so the dialog always
+            // wins clicks even when the toolbar is force-shown.
             zIndex: 99999,
             background: 'rgba(0,0,0,0.6)',
             display: 'flex',
@@ -392,6 +428,13 @@ export default function Toolbar({
     </>
   )
 }
+
+// Wrap with forwardRef at export so App.jsx can attach a ref and call
+// the imperative methods exposed via useImperativeHandle above. The
+// inner function is named so React DevTools shows "Toolbar" instead of
+// "ForwardRef(Toolbar)".
+const ToolbarWithRef = forwardRef(Toolbar)
+export default ToolbarWithRef
 
 function Divider() {
   return (
