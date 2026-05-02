@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { boardOpacityIcon } from '../hooks/useBoardView'
 
 // Reveal-zone height (px from top of viewport). When the cursor is
 // within this band the toolbar shows. The Electron transparent-overlay
@@ -51,6 +52,20 @@ function Toolbar({
   // dragGrid + resizeGrid props plus subtle on-drag alignment guides.
   snap = false,
   onToggleSnap,
+  // Board-level opacity (1, 0.75, 0.5, 0.3). Cycle button advances to
+  // the next step. Active when < 1. Persisted by useBoardView in its
+  // own `muraldesk-view` localStorage key.
+  boardOpacity = 1,
+  onCycleBoardOpacity,
+  // Focus mode — when true, the toolbar fully hides unless the cursor
+  // is in the top reveal-zone, the toolbar itself is hovered, a dialog
+  // is open, OR any pinned item is hovered. Persisted alongside
+  // boardOpacity in `muraldesk-view`. The mode also forces the
+  // hide-debounce path on the web build (the same 700 ms grace timer
+  // the Electron build already uses) so reveal/hide doesn't flicker
+  // when the cursor crosses the reveal boundary on the way to a button.
+  focusMode = false,
+  onToggleFocusMode,
   onMinimizeWindow,
   onCloseWindow,
   // Toolbar visibility override driven by App's Ctrl+Shift+T shortcut.
@@ -111,7 +126,11 @@ function Toolbar({
   // behavior) caused a visible toolbar flash on launch. The empty-
   // board case still force-shows via `forceShow` below so first-run
   // users have a discoverable entry point.
-  const startsHidden = (isElectron || desktopMode) && hasItems
+  // Focus mode also starts hidden: the user explicitly opted into
+  // hiding the toolbar, so respect that on first paint after a refresh
+  // (otherwise there'd be a visible toolbar flash before the first
+  // mousemove proves the cursor isn't in the reveal zone).
+  const startsHidden = ((isElectron || desktopMode) && hasItems) || focusMode
   const [nearTop, setNearTop] = useState(!startsHidden)
   const [hovered, setHovered] = useState(false)
   useEffect(() => {
@@ -124,17 +143,22 @@ function Toolbar({
   }, [desktopMode, isElectron])
 
   // Empty board in Electron → force-show so the user has a visible
-  // entry point to add their first item.
-  const forceShow = isElectron && !hasItems
+  // entry point to add their first item. Focus mode disables this:
+  // the user explicitly chose to hide the toolbar, and they can
+  // always reveal it via top-hover.
+  const forceShow = isElectron && !hasItems && !focusMode
 
   // Composite "should the toolbar be visible right now" signal.
-  // anyItemHovered only counts in Electron mode — on the web build
-  // the toolbar is always present so we don't need this to re-show it.
+  //   - Default mode: anyItemHovered only counts in Electron (the web
+  //     build's toolbar is always present and merely dims, so it
+  //     doesn't need item-hover to re-show).
+  //   - Focus mode: item-hover counts in BOTH builds — that's the
+  //     entire point of the mode (hide unless top-hover OR item-hover).
   const autoShow = forceShow
     || nearTop
     || hovered
     || linkDialog
-    || (isElectron && anyItemHovered)
+    || ((isElectron || focusMode) && anyItemHovered)
   // Manual override (Ctrl+Shift+T) beats auto behavior. 'show' pins
   // the toolbar visible regardless of cursor position; 'hide' pins
   // it hidden even while hovering an item; null defers to auto. The
@@ -150,12 +174,13 @@ function Toolbar({
       : autoShow
 
   // Debounced visibility. `revealed` is the actual rendered state.
-  // The 700 ms hide-grace only applies in modes where the toolbar
-  // FULLY hides (Electron transparent-overlay + Desktop Canvas
-  // immersive mode); on the web build the toolbar only dims (it stays
-  // present), so no debounce is needed and we mirror `shouldShow`
-  // synchronously to preserve the original web UX (instant dim).
-  const debounceHide = isElectron || desktopMode
+  // The 700 ms hide-grace applies in any mode where the toolbar
+  // FULLY hides (Electron transparent-overlay, Desktop Canvas
+  // immersive mode, OR Focus Mode on web) — without the grace the
+  // user would see the toolbar disappear mid-cursor-travel as they
+  // move from the reveal zone toward a button. Plain web (no focus
+  // mode) keeps the original instant-dim UX.
+  const debounceHide = isElectron || desktopMode || focusMode
   // Same start-hidden rule as nearTop above: launch hidden when items
   // already exist in a fully-hidden mode, otherwise launch revealed
   // (web build, empty board, normal Electron with no items, …).
@@ -198,10 +223,12 @@ function Toolbar({
 
   const visible = revealed
   const dim = !visible
-  // Both desktopMode and Electron-overlay mode fully hide the toolbar
-  // when not visible (instead of just dimming it). On the web build it
-  // stays present-but-dim, matching the original behavior.
-  const fullyHidden = (desktopMode || isElectron) && !visible
+  // Desktop Canvas, Electron overlay, AND Focus Mode all fully hide
+  // the toolbar when not visible (opacity 0 + pointer-events: none +
+  // slide up). Plain web without focus mode keeps the original
+  // present-but-dim behavior — the toolbar is always there, just at
+  // 36% opacity when the cursor isn't near the top.
+  const fullyHidden = (desktopMode || isElectron || focusMode) && !visible
 
   function handleImageFile(e) {
     const file = e.target.files[0]
@@ -403,6 +430,39 @@ function Toolbar({
           title={snap
             ? 'Snap is ON — drag/resize snaps to a 24 px grid. Click to turn off.'
             : 'Snap is OFF — drag/resize freely. Click to turn on.'}
+        />
+
+        {/* Board opacity — cycle button. Click advances to the next
+            step (100 → 75 → 50 → 30 → 100). Active when < 100% so
+            the user can see at a glance that a fade is applied. The
+            icon glyph mirrors the per-item opacity icons (●/◕/◐/◔)
+            so both opacity systems read consistently. The board fade
+            is a runtime visual multiplier only — it never mutates
+            per-item `item.opacity`, so refresh / export / import
+            round-trip identical item shapes. */}
+        <PillBtn
+          icon={boardOpacityIcon(boardOpacity)}
+          label={boardOpacity >= 0.999
+            ? 'Board'
+            : `Board ${Math.round(boardOpacity * 100)}%`}
+          onClick={onCycleBoardOpacity}
+          active={boardOpacity < 0.999}
+          title={`Board opacity ${Math.round(boardOpacity * 100)}% — click to cycle (100 / 75 / 50 / 30)`}
+        />
+
+        {/* Focus Mode toggle. When ON, the toolbar fully hides unless
+            the cursor is in the top reveal zone OR any pinned item is
+            hovered. Items themselves stay fully visible (subject to
+            board opacity) — the mode only affects toolbar chrome,
+            never the mural itself. No extra panels per spec. */}
+        <PillBtn
+          icon="👁"
+          label={focusMode ? 'Focus On' : 'Focus'}
+          onClick={onToggleFocusMode}
+          active={focusMode}
+          title={focusMode
+            ? 'Focus mode is ON — toolbar hides unless you hover the top of the screen or an item. Click to turn off.'
+            : 'Focus mode is OFF — toolbar stays visible. Click to enter focus mode (hover top or any item to reveal).'}
         />
 
         <Divider />
