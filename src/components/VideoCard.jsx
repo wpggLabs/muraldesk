@@ -2,6 +2,12 @@ import { useRef } from 'react'
 
 export default function VideoCard({ item, onUpdate, hovered }) {
   const videoRef = useRef(null)
+  // Per-item fit mode (see BoardItem mini-toolbar). 'cover' (default
+  // for legacy items missing the field) crops to fully fill the card.
+  // 'contain' letterboxes; the existing `background: '#000'` on the
+  // wrapper provides the letterbox color, which reads as a normal
+  // video player rather than an app-style chrome.
+  const fit = item.fit === 'contain' ? 'contain' : 'cover'
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', background: '#000' }}>
@@ -15,7 +21,7 @@ export default function VideoCard({ item, onUpdate, hovered }) {
         style={{
           width: '100%',
           height: '100%',
-          objectFit: 'cover',
+          objectFit: fit,
           display: 'block',
           pointerEvents: 'none', // let drag pass through the video
         }}
