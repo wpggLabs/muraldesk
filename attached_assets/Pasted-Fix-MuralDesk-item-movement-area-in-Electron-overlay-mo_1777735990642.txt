@@ -1,0 +1,56 @@
+Fix MuralDesk item movement area in Electron overlay mode.
+
+Current problem:
+The transparent overlay works, but added images/videos/notes/links cannot move across the whole display. They are bounded inside the current Electron window size.
+
+Goal:
+When using the Electron transparent overlay / Desktop Mode, MuralDesk should cover the full current monitor/display so items can be moved anywhere across that display.
+
+Important:
+Items can only move inside the Electron BrowserWindow. So make the BrowserWindow fill the current display when Desktop Mode is enabled.
+
+Requirements:
+- Electron only.
+- Web/PWA unchanged.
+- When user enables Desktop Mode:
+  - detect the display/monitor the current MuralDesk window is on
+  - resize/move the BrowserWindow to cover that full display
+  - use display.bounds, not a small remembered window size
+  - canvas should then be 100vw/100vh and items can move across the full monitor
+- When user exits Desktop Mode:
+  - restore previous normal window bounds if available
+  - or restore to a reasonable 1280x800 centered window
+- Do not overwrite the normal saved window size/position with the fullscreen/overlay bounds.
+- Keep transparent window, frameless mode, click-through, toolbar reveal, minimize/close working.
+- Keep drag/resize/delete/duplicate/lock working.
+- Keep localStorage/IndexedDB persistence untouched.
+- Keep export/import working.
+
+Implementation guidance:
+- Update Electron main process.
+- Add IPC if needed:
+  - desktop:enter-overlay-display
+  - desktop:exit-overlay-display
+  or extend existing desktop:set-fullscreen behavior.
+- Use Electron screen API:
+  - screen.getDisplayMatching(win.getBounds()) or getDisplayNearestPoint
+  - then win.setBounds(display.bounds)
+- Store previous window bounds in memory before expanding to full display.
+- Do not save full-display overlay bounds into window-state.json as normal window geometry.
+- Renderer Desktop Mode button should trigger this full-display behavior.
+- Rnd bounds should remain parent, because parent should now be the full display-sized window.
+
+Test on Windows:
+1. Launch Electron app in normal window.
+2. Add image.
+3. Try dragging image — it is limited to window, expected.
+4. Click Desktop Mode.
+5. Window becomes transparent overlay covering the full current display.
+6. Drag image to all corners of the monitor.
+7. Add video/note/link and drag them across the whole display too.
+8. Exit Desktop Mode.
+9. Window returns to previous normal size.
+10. Close/reopen — normal window size is not accidentally saved as full-screen overlay bounds.
+11. Re-enable Desktop Mode — full display overlay works again.
+
+Report exact files changed and any limitations.

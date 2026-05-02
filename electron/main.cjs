@@ -81,6 +81,18 @@ function clampToDisplays(state) {
 let mainWindow = null
 
 function createWindow() {
+  // Reset overlay-mode module state. inOverlayDisplay / prevWindowBounds /
+  // prevMaximized are module-scoped (so the IPC handlers can reach them
+  // without juggling closure refs), but they describe ONE specific
+  // BrowserWindow's lifecycle. On macOS the user can quit all windows and
+  // reopen via the dock (`activate` event below), which calls createWindow
+  // again — without this reset, a brand-new window could inherit
+  // `inOverlayDisplay=true` from the previous, now-destroyed window and
+  // become permanently unable to persist its geometry.
+  inOverlayDisplay = false
+  prevWindowBounds = null
+  prevMaximized = false
+
   const stored = clampToDisplays(loadWindowState())
 
   // Transparent overlay window:
@@ -151,7 +163,12 @@ function createWindow() {
   }
   function persistGeometry() {
     if (win.isDestroyed()) return
-    if (win.isFullScreen()) return // don't capture fullscreen rect as the restore rect
+    // Don't overwrite the user's normal window geometry while we're
+    // expanded to cover the whole display in overlay mode — the
+    // resize/move events triggered by `setBounds(display.bounds)`
+    // would otherwise clobber the saved "restore me here" rectangle.
+    if (inOverlayDisplay) return
+    if (win.isFullScreen()) return // also skip OS-level fullscreen as a defense in depth
     const isMax = win.isMaximized()
     const bounds = isMax ? win.getNormalBounds?.() || win.getBounds() : win.getBounds()
     saveWindowState({
@@ -168,15 +185,18 @@ function createWindow() {
   win.on('unmaximize', scheduleSave)
   win.on('close', persistGeometry)
 
-  // Notify the renderer when fullscreen state changes (including OS-level
-  // exits like Esc on macOS) so the toolbar can keep its toggle in sync.
-  function emitFs() {
-    if (!win.isDestroyed()) {
-      win.webContents.send('desktop:fullscreen-changed', win.isFullScreen())
-    }
-  }
-  win.on('enter-full-screen', emitFs)
-  win.on('leave-full-screen', emitFs)
+  // NOTE: we deliberately do NOT subscribe to `enter-full-screen` /
+  // `leave-full-screen` events anymore. Desktop Mode is implemented as
+  // a `setBounds(display.bounds)` overlay (see enterOverlayDisplay /
+  // exitOverlayDisplay below) — it never enters OS-level fullscreen,
+  // so those events would never fire from our code. If the OS DID
+  // somehow trigger fullscreen externally (a global hotkey we don't
+  // own, a tiling-WM rule, …) and we still mirrored that to
+  // 'desktop:fullscreen-changed', the renderer's Desktop Mode toggle
+  // would desync from `inOverlayDisplay` (the real ground truth) and
+  // the toolbar would show the wrong state. Cleaner to ignore OS
+  // fullscreen entirely and let `inOverlayDisplay` be the single
+  // source of truth.
 
   // External links → OS default browser. Internal navigation away from
   // the app shell is blocked.
@@ -210,31 +230,150 @@ function createWindow() {
 
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
+    // Clear overlay-mode state so a subsequent createWindow() (e.g.
+    // macOS dock reactivation) starts fresh. createWindow itself
+    // already resets these, but doing it on close as well guarantees
+    // the invariant "inOverlayDisplay reflects a LIVE window" even if
+    // some other code path peeks at it between close and re-create.
+    inOverlayDisplay = false
+    prevWindowBounds = null
+    prevMaximized = false
   })
 
   return win
 }
 
+// ---- Desktop Canvas Overlay Mode (full-display transparent overlay) -------
+//
+// "Desktop Mode" used to call BrowserWindow.setFullScreen(true), which
+// puts the OS into native fullscreen (animation, taskbar hide,
+// space-of-its-own on macOS, …). That is NOT what we want for a
+// transparent desktop overlay: we want the BrowserWindow itself to
+// resize to cover the full physical bounds of the monitor MuralDesk
+// is currently on, so pinned items can be dragged anywhere across the
+// whole display, while the OS still treats us as a regular,
+// resizable, non-fullscreen window. Transparency / frame-less /
+// click-through all keep working because nothing about the window
+// type changes — only its rectangle.
+//
+// Module-level state:
+//   - inOverlayDisplay: whether we're currently expanded to a display.
+//   - prevWindowBounds: the pre-overlay rect (in memory only — NEVER
+//     persisted to window-state.json) so we can restore it on exit.
+//   - prevMaximized: whether we were maximized; we unmaximize on
+//     enter and re-maximize on exit if so.
+//
+// persistGeometry() is gated on `!inOverlayDisplay` so the full-
+// display rect never clobbers the saved normal geometry.
+
+let inOverlayDisplay = false
+let prevWindowBounds = null
+let prevMaximized = false
+
+function emitOverlayChanged(win, on) {
+  if (!win || win.isDestroyed()) return
+  try {
+    win.webContents.send('desktop:fullscreen-changed', !!on)
+  } catch {
+    // Renderer not ready yet; the renderer will sync via isFullscreen()
+    // on its first IPC call after mount.
+  }
+}
+
+function enterOverlayDisplay(win) {
+  if (!win || win.isDestroyed()) return false
+  if (inOverlayDisplay) return true
+  // Capture the pre-overlay state in MEMORY ONLY. Do not write to
+  // window-state.json — that file should only ever hold the user's
+  // chosen normal window geometry.
+  prevMaximized = win.isMaximized()
+  // getNormalBounds returns the underlying restore rect if maximized;
+  // fall back to the regular bounds otherwise.
+  prevWindowBounds = prevMaximized
+    ? (typeof win.getNormalBounds === 'function' ? win.getNormalBounds() : win.getBounds())
+    : win.getBounds()
+  // Find the display the window is currently "on" and expand to its
+  // FULL physical bounds (not workArea — we want the overlay to cover
+  // the taskbar / dock area too, since this is a real-estate overlay
+  // for desktop mural use). screen.getDisplayMatching picks the
+  // display with the largest intersection with the window rect.
+  const display = screen.getDisplayMatching(win.getBounds())
+  if (prevMaximized) win.unmaximize()
+  // Set the flag BEFORE setBounds so the resize/move events that
+  // immediately follow are correctly ignored by persistGeometry.
+  inOverlayDisplay = true
+  win.setBounds(display.bounds)
+  // Lock the overlay in place: the toolbar pill is the OS window-drag
+  // handle (`-webkit-app-region: drag`) so without setMovable(false)
+  // the user could accidentally drag the entire overlay off-screen
+  // when reaching for the toolbar. Resizing is also disabled — the
+  // overlay should stay pinned to display bounds.
+  win.setMovable(false)
+  win.setResizable(false)
+  emitOverlayChanged(win, true)
+  return true
+}
+
+function exitOverlayDisplay(win) {
+  if (!win || win.isDestroyed()) return false
+  if (!inOverlayDisplay) return false
+  win.setMovable(true)
+  win.setResizable(true)
+  // Restore the pre-overlay rect. If we somehow don't have one (which
+  // shouldn't happen — enterOverlayDisplay always captures it), fall
+  // back to a 1280x800 window centered on the current display.
+  let restore = prevWindowBounds
+  if (!restore) {
+    const d = screen.getDisplayMatching(win.getBounds())
+    const w = 1280
+    const h = 800
+    restore = {
+      x: Math.round(d.bounds.x + (d.bounds.width - w) / 2),
+      y: Math.round(d.bounds.y + (d.bounds.height - h) / 2),
+      width: w,
+      height: h,
+    }
+  }
+  // Clear the flag BEFORE setBounds so the resize/move events that
+  // follow are properly captured by persistGeometry — we want the
+  // restored normal geometry to be saved.
+  inOverlayDisplay = false
+  win.setBounds(restore)
+  if (prevMaximized) win.maximize()
+  prevWindowBounds = null
+  prevMaximized = false
+  emitOverlayChanged(win, false)
+  return true
+}
+
 // ---- IPC: Desktop Canvas Mode ---------------------------------------------
+//
+// The renderer drives Desktop Mode through `bridge.setFullscreen()` /
+// `bridge.toggleFullscreen()` — historical names from when this used
+// OS fullscreen. We keep the channel names so the renderer doesn't
+// need to change, but the implementation now drives our overlay-
+// display behavior described above.
 
-ipcMain.handle('desktop:set-fullscreen', (_event, on) => {
-  const win = BrowserWindow.fromWebContents(_event.sender)
+ipcMain.handle('desktop:set-fullscreen', (event, on) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
   if (!win || win.isDestroyed()) return false
-  win.setFullScreen(!!on)
-  return win.isFullScreen()
+  if (!!on) enterOverlayDisplay(win)
+  else exitOverlayDisplay(win)
+  return inOverlayDisplay
 })
 
-ipcMain.handle('desktop:toggle-fullscreen', (_event) => {
-  const win = BrowserWindow.fromWebContents(_event.sender)
+ipcMain.handle('desktop:toggle-fullscreen', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
   if (!win || win.isDestroyed()) return false
-  win.setFullScreen(!win.isFullScreen())
-  return win.isFullScreen()
+  if (inOverlayDisplay) exitOverlayDisplay(win)
+  else enterOverlayDisplay(win)
+  return inOverlayDisplay
 })
 
-ipcMain.handle('desktop:is-fullscreen', (_event) => {
-  const win = BrowserWindow.fromWebContents(_event.sender)
+ipcMain.handle('desktop:is-fullscreen', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
   if (!win || win.isDestroyed()) return false
-  return win.isFullScreen()
+  return inOverlayDisplay
 })
 
 // ---- IPC: window controls (frameless mode needs explicit min/close) -------
