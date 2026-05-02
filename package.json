@@ -3,10 +3,16 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5000",
+    "dev:web": "vite --host 0.0.0.0 --port 5000",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:web": "vite build",
+    "preview": "vite preview",
+    "dev:desktop": "concurrently -k -n vite,electron -c \"cyan,magenta\" \"npm run dev:web\" \"wait-on http-get://localhost:5000 && cross-env ELECTRON_RENDERER_URL=http://localhost:5000 electron .\"",
+    "build:desktop": "npm run build:web && electron-builder --win",
+    "build:desktop:dir": "npm run build:web && electron-builder --win --dir"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -18,6 +24,42 @@
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.2"
+    "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "electron": "^31.7.6",
+    "electron-builder": "^25.1.8",
+    "vite": "^5.4.2",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.muraldesk.app",
+    "productName": "MuralDesk",
+    "copyright": "Copyright © 2026 MuralDesk",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "MuralDesk-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MuralDesk"
+    }
   }
 }

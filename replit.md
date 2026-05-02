@@ -13,6 +13,9 @@ A local-first visual desktop pinboard built with React and Vite. Users can pin i
 ## Project Structure
 
 ```
+electron/              — Optional Windows desktop shell (see "Desktop (Electron) target" below)
+  main.cjs             — Electron main process (BrowserWindow + window-open handler)
+  preload.cjs          — Empty preload (contextIsolation kept on for future bridge)
 public/
   manifest.webmanifest — PWA manifest (name, short_name, theme_color #0f0f10, icons, standalone)
   icon.svg             — Primary app icon (gradient + stylized cards)
@@ -100,6 +103,65 @@ The workspace is intentionally a near-empty mural rather than a typical app UI:
 - **Duplicate (⧉)** — clones any card; for media items it copies the IDB blob to a fresh id.
 - **Lock (🔒/🔓)** — locked cards can't be dragged or resized.
 - **Export / Import JSON** — round-trips layout. Import is capped at 5 MB / 500 items, validates structure, and sanitizes link URLs (drops `javascript:` and other non-http(s) protocols).
+
+## Desktop (Electron) target
+
+MuralDesk also packages as a Windows desktop app via Electron, sharing the
+exact same renderer (the React/Vite bundle in `dist/`). The web/PWA build
+remains the primary target; Electron is an optional shell on top.
+
+```
+electron/
+  main.cjs    — Main process: creates one BrowserWindow (1280x800,
+                min 900x600, dark #0f0f10 background, autoHideMenuBar).
+                In dev loads `process.env.ELECTRON_RENDERER_URL`
+                (Vite at http://localhost:5000); in prod loads
+                `dist/index.html` via file://. External http(s) links
+                are forwarded to the OS default browser.
+  preload.cjs — Empty preload kept around so contextIsolation stays on
+                and a future contextBridge can be added without touching
+                main.
+```
+
+Renderer is run with `contextIsolation: true`, `nodeIntegration: false`,
+`sandbox: true`. There is no IPC between renderer and main, and the
+renderer has no Node access. localStorage and IndexedDB persistence work
+unchanged because Chromium provides them in any context.
+
+`vite.config.js` sets `base: './'` so the built `dist/index.html` uses
+relative asset paths that resolve correctly under `file://` in Electron.
+Relative paths also work for the web build.
+
+`src/registerSW.js` skips service-worker registration on non-http(s)
+protocols, so `file://` Electron loads do not try to register `/sw.js`.
+
+### Scripts
+
+```
+npm run dev           — Vite dev server (web)
+npm run dev:web       — alias for dev
+npm run build         — Vite production build (web)
+npm run build:web     — alias for build
+npm run dev:desktop   — Vite dev server + Electron pointing at it (HMR)
+npm run build:desktop — Vite build, then electron-builder --win (NSIS)
+npm run build:desktop:dir — same but unpacked dir output, faster for testing
+```
+
+`dev:desktop` requires a desktop display and will not work in headless
+Replit; run it on your own machine.
+
+### Building the Windows installer on a Windows PC
+
+1. Install Node.js 18+ and run `npm install` once in the repo.
+2. `npm run build:desktop` — produces `release/MuralDesk-Setup-<version>.exe`
+   (NSIS installer) plus an unpacked app dir under `release/win-unpacked/`.
+3. To skip the installer and just get a runnable app folder, use
+   `npm run build:desktop:dir` and launch `release/win-unpacked/MuralDesk.exe`.
+4. To customize the installer icon, drop a 256×256 `icon.ico` into a new
+   `build/` folder; electron-builder picks it up automatically.
+
+No code-signing is configured, so SmartScreen will warn the first time the
+installer runs. That is expected for an unsigned local build.
 
 ## PWA notes
 
