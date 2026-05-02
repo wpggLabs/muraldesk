@@ -37,6 +37,53 @@ export default function App() {
     toggleDesktopMode,
   } = useDesktopMode()
 
+  // Mark <html data-electron="true"> so src/index.css can paint the
+  // root transparent in the Electron build. The web/PWA build never
+  // sets this attribute and keeps its dark canvas background.
+  useEffect(() => {
+    if (!isElectron) return
+    document.documentElement.setAttribute('data-electron', 'true')
+    return () => document.documentElement.removeAttribute('data-electron')
+  }, [isElectron])
+
+  // Track which items are currently hovered. Used in Electron mode so
+  // the floating toolbar can reveal itself whenever the user is
+  // pointing at any pinned item (per the transparent-overlay spec).
+  const [hoveredIds, setHoveredIds] = useState(() => new Set())
+  const handleItemHoverChange = useCallback((id, isHovered) => {
+    setHoveredIds((prev) => {
+      const next = new Set(prev)
+      if (isHovered) next.add(id); else next.delete(id)
+      return next
+    })
+  }, [])
+  // Prune ids that no longer exist (e.g. an item was removed while
+  // hovered, so its mouseleave never fired). Otherwise the toolbar
+  // could stay revealed forever.
+  useEffect(() => {
+    setHoveredIds((prev) => {
+      if (prev.size === 0) return prev
+      const valid = new Set(items.map((it) => it.id))
+      let changed = false
+      const next = new Set()
+      for (const id of prev) {
+        if (valid.has(id)) next.add(id)
+        else changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [items])
+  const anyItemHovered = hoveredIds.size > 0
+
+  // Frameless-window controls (Electron only). On the web these are
+  // unused; the bridge is undefined.
+  const handleMinimize = useCallback(() => {
+    window.muraldesk?.minimizeWindow?.()
+  }, [])
+  const handleClose = useCallback(() => {
+    window.muraldesk?.closeWindow?.()
+  }, [])
+
   const handleAddImage = useCallback((file) => {
     addMediaItem('image', file, { width: 300, height: 220 })
   }, [addMediaItem])
@@ -162,6 +209,11 @@ export default function App() {
     if (e.target === e.currentTarget) setSelectedId(null)
   }
 
+  // In Electron transparent-overlay mode we paint NOTHING on the canvas
+  // background — no bg color, no ambient gradients, no grid, no empty-
+  // state hero. Only pinned items and the floating toolbar are visible
+  // on top of the user's desktop. The web/PWA build keeps the original
+  // dark canvas with its decorative layers and onboarding hero.
   return (
     <div
       onMouseDown={handleCanvasMouseDown}
@@ -170,37 +222,41 @@ export default function App() {
         height: '100vh',
         position: 'relative',
         overflow: 'hidden',
-        background: 'var(--bg)',
+        background: isElectron ? 'transparent' : 'var(--bg)',
       }}
     >
-      {/* Soft ambient glow + grid (purely decorative, never intercepts pointer) */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `
-            radial-gradient(circle at 20% 30%, rgba(108,99,255,0.04) 0%, transparent 60%),
-            radial-gradient(circle at 80% 70%, rgba(62,207,142,0.03) 0%, transparent 60%)
-          `,
-          pointerEvents: 'none',
-        }}
-      />
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `
-            linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-          pointerEvents: 'none',
-        }}
-      />
+      {!isElectron && (
+        <>
+          {/* Soft ambient glow + grid (purely decorative, never intercepts pointer) */}
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: `
+                radial-gradient(circle at 20% 30%, rgba(108,99,255,0.04) 0%, transparent 60%),
+                radial-gradient(circle at 80% 70%, rgba(62,207,142,0.03) 0%, transparent 60%)
+              `,
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: `
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)
+              `,
+              backgroundSize: '40px 40px',
+              pointerEvents: 'none',
+            }}
+          />
+        </>
+      )}
 
-      {items.length === 0 && (
+      {items.length === 0 && !isElectron && (
         <EmptyState
           onSampleBoard={handleSampleBoard}
           onAddNote={handleAddNote}
@@ -225,6 +281,7 @@ export default function App() {
           onFocus={bringToFront}
           onSelect={setSelectedId}
           onDuplicate={duplicateItem}
+          onHoverChange={handleItemHoverChange}
         />
       ))}
 
@@ -242,6 +299,10 @@ export default function App() {
         isElectron={isElectron}
         desktopMode={desktopMode}
         onToggleDesktopMode={toggleDesktopMode}
+        hasItems={items.length > 0}
+        anyItemHovered={anyItemHovered}
+        onMinimizeWindow={handleMinimize}
+        onCloseWindow={handleClose}
       />
     </div>
   )

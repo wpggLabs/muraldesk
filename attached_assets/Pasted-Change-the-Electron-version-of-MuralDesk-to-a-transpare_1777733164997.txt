@@ -1,0 +1,88 @@
+Change the Electron version of MuralDesk to a transparent overlay-style window.
+
+Goal:
+I do not want it to look like a normal app window with a dark background.
+I want the Electron app window to be visually transparent so only the floating toolbar and pinned items are visible.
+
+Requirements:
+
+ELECTRON WINDOW
+- Electron only, not web/PWA.
+- Make the BrowserWindow transparent.
+- Remove the normal OS frame/title bar if possible.
+- Use a transparent background (#00000000).
+- Keep the window interactive.
+- Keep resizing and moving items working.
+- Keep persistence working.
+
+RENDERER / UI
+- In Electron mode, remove the dark full-window canvas background.
+- Make html, body, and app root transparent.
+- Remove any visible fullscreen dark panel/background.
+- Only show:
+  - the floating pill toolbar
+  - pinned items
+  - hover controls
+- Do not show a large empty dark app surface.
+
+TOOLBAR BEHAVIOR
+- When the board is empty:
+  - show the floating toolbar pill so the user can add content.
+- After the user adds the first item:
+  - automatically hide the main toolbar.
+- Show the main toolbar again only when:
+  - the user hovers an existing item
+  - OR the mouse is near the top area
+  - OR a shortcut is used if needed
+- When not needed, the toolbar should stay hidden.
+
+ITEM HOVER
+- Hovering a pinned item should reveal:
+  - the item mini-toolbar (lock / duplicate / delete / drag / etc.)
+  - and also show the main toolbar pill if possible
+- When not hovering, keep the screen clean.
+
+WINDOW CONTROLS
+- Since the window becomes frameless, provide minimal custom window controls if needed:
+  - close
+  - minimize
+  - optional fullscreen / desktop mode
+- Keep them subtle and hidden unless needed.
+- If this is too much for one pass, at least keep a reliable way to close the app with Esc or toolbar controls.
+
+CLICK / HIT AREA
+- Keep pointer interaction normal.
+- Do not make the whole transparent area block things unnecessarily if avoidable.
+- If click-through is not implemented, that is okay for now — just make it visually transparent first.
+
+STORAGE
+- Do not touch localStorage / IndexedDB persistence unless absolutely necessary.
+- Do not break media persistence.
+- Do not break export/import.
+- Do not break drag/resize.
+
+WEB SAFETY
+- Keep web/PWA version unchanged with the current dark canvas.
+- Transparent overlay mode should be Electron-only.
+
+Implementation hints:
+- Update electron/main.cjs BrowserWindow options for transparency/frame.
+- Add an Electron-mode class or data attribute in the renderer to switch styles.
+- Conditionally hide/remove the canvas background in Electron mode.
+- Auto-hide toolbar after first item exists.
+- Re-show toolbar on item hover / top hover.
+
+Test:
+1. Launch Electron build.
+2. Confirm window is visually transparent.
+3. Confirm no dark full-window background remains.
+4. Confirm toolbar is visible on empty board.
+5. Add one item.
+6. Confirm toolbar hides.
+7. Hover the item.
+8. Confirm toolbar appears.
+9. Refresh/reopen.
+10. Confirm items still persist.
+11. Confirm drag/resize still work.
+
+Report exact files changed and any platform limitations.
