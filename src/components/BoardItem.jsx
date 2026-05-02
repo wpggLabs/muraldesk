@@ -47,6 +47,14 @@ export default function BoardItem({
   // active.
   snap = false,
   snapGrid = 24,
+  // Board-level opacity multiplier (driven by useBoardView in App).
+  // Applied at render time to the content layer only, multiplicative
+  // with this item's persisted `item.opacity`. The mini-toolbar +
+  // resize handles + corner glyph are siblings of the content layer
+  // and therefore unaffected — hover controls stay fully readable
+  // even at boardOpacity = 0.3. The persisted item shape is NOT
+  // mutated, so refresh / export / import round-trip unchanged.
+  boardOpacity = 1,
 }) {
   const [hovered, setHovered] = useState(false)
   // Live drag/resize state used solely to render the alignment guide
@@ -311,7 +319,12 @@ export default function BoardItem({
             borderRadius: 'var(--radius)',
             overflow: 'hidden',
             boxShadow: outline,
-            opacity: itemOpacity,
+            // Board-level fade is multiplicative with the per-item
+            // opacity. When boardOpacity === 1 the value is identical
+            // to the pre-feature (item-only) opacity, so the no-fade
+            // render path is byte-identical to before this feature
+            // was added.
+            opacity: itemOpacity * boardOpacity,
             transition: 'opacity var(--t-fast) var(--ease-out), box-shadow var(--t-med) var(--ease-out)',
           }}
         >

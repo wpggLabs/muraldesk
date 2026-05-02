@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBoard } from './hooks/useBoard'
+import { useBoardView } from './hooks/useBoardView'
 import { useDesktopMode } from './hooks/useDesktopMode'
 import { useElectronClickThrough } from './hooks/useElectronClickThrough'
 import { useSnap } from './hooks/useSnap'
@@ -73,6 +74,18 @@ export default function App() {
   // and resizeGrid props, and renders subtle alignment guide lines
   // while a card is being dragged or resized.
   const { snap, toggleSnap, gridSize: snapGrid } = useSnap()
+
+  // Board-level view preferences (board opacity + focus mode), persisted
+  // in their own `muraldesk-view` localStorage key. Independent of
+  // useBoard / useSnap / IndexedDB. boardOpacity is a runtime visual
+  // multiplier — per-item `item.opacity` values stay untouched so a
+  // refresh / export / import round-trips identical item shapes.
+  const {
+    boardOpacity,
+    focusMode,
+    cycleBoardOpacity,
+    toggleFocusMode,
+  } = useBoardView()
 
   // Mark <html data-electron="true"> so src/index.css can paint the
   // root transparent in the Electron build. The web/PWA build never
@@ -576,6 +589,7 @@ export default function App() {
           onHoverChange={handleItemHoverChange}
           snap={snap}
           snapGrid={snapGrid}
+          boardOpacity={boardOpacity}
         />
       ))}
 
@@ -601,6 +615,10 @@ export default function App() {
         anyItemHovered={anyItemHovered}
         snap={snap}
         onToggleSnap={toggleSnap}
+        boardOpacity={boardOpacity}
+        onCycleBoardOpacity={cycleBoardOpacity}
+        focusMode={focusMode}
+        onToggleFocusMode={toggleFocusMode}
         onMinimizeWindow={handleMinimize}
         onCloseWindow={handleClose}
         manualOverride={manualToolbarOverride}
