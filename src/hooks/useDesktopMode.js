@@ -1,8 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
 
-// Desktop Canvas Mode is an Electron-only "immersive" view: the OS-level
-// window goes fullscreen and the toolbar auto-hides so the canvas fills
-// the entire monitor like a desktop mural layer.
+// Desktop Canvas Mode is an Electron-only "immersive" view: the
+// BrowserWindow expands (via setBounds(display.bounds) in the main
+// process — see electron/main.cjs `enterOverlayDisplay`) to cover the
+// FULL bounds of whichever monitor MuralDesk is currently on, so
+// pinned items can be dragged anywhere across that display while the
+// window stays a regular, transparent, non-fullscreen overlay. The
+// toolbar auto-hides so the canvas fills the entire monitor like a
+// desktop mural layer.
+//
+// The IPC channel names (`bridge.setFullscreen` / `toggleFullscreen` /
+// `isFullscreen` / `onFullscreenChange`) are kept from the original
+// OS-fullscreen implementation for backwards compatibility — they
+// drive the overlay-display behavior now, not native fullscreen.
+// "Fullscreen" in this hook therefore always means "overlay covering
+// current display" in Electron.
 //
 // On the web/PWA build there is no `window.muraldesk` bridge, so:
 //   - `isElectron` is false
@@ -13,7 +25,9 @@ import { useCallback, useEffect, useState } from 'react'
 //
 // `desktopMode` is persisted to localStorage so the user's preference
 // survives reload, but window geometry is persisted by the Electron
-// main process (window-state.json in userData) — not here.
+// main process (window-state.json in userData) — not here, and the
+// overlay rect itself is NEVER persisted (see `inOverlayDisplay`
+// gating in main.cjs).
 
 const STORAGE_KEY = 'mural.desktopMode'
 
@@ -51,9 +65,12 @@ export function useDesktopMode() {
     isElectron ? readStoredDesktopMode() : false,
   )
 
-  // Subscribe to web Fullscreen API changes (works in both targets — in
-  // Electron the OS fullscreen does NOT trigger document.fullscreenChange,
-  // so we also subscribe to the Electron bridge below).
+  // Subscribe to web Fullscreen API changes. Only relevant on the
+  // web/PWA build — in Electron the overlay-display mode does not use
+  // the web Fullscreen API at all (and the OS-level fullscreen
+  // listeners were removed from main.cjs), so this effect is a no-op
+  // there. We still wire it up unconditionally so the same hook
+  // works in both targets.
   useEffect(() => {
     function onChange() {
       setIsFullscreen(!!document.fullscreenElement)
@@ -62,17 +79,19 @@ export function useDesktopMode() {
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
 
-  // Subscribe to OS-level fullscreen changes coming from the Electron
-  // main process (e.g. user pressed F11 / OS hotkey, or exited fullscreen
-  // via the green traffic-light button on macOS).
+  // Subscribe to overlay-mode changes coming from the Electron main
+  // process. `bridge.isFullscreen()` returns `inOverlayDisplay` (the
+  // single source of truth for Desktop Mode); `onFullscreenChange`
+  // fires when enterOverlayDisplay / exitOverlayDisplay run.
   useEffect(() => {
     if (!bridge) return
     let mounted = true
     bridge.isFullscreen().then((v) => { if (mounted) setIsFullscreen(!!v) }).catch(() => {})
     const off = bridge.onFullscreenChange((v) => {
       setIsFullscreen(!!v)
-      // If the OS dropped us out of fullscreen, also drop desktopMode so
-      // the toolbar reappears and the toggle stays in sync.
+      // If overlay mode was exited (from any path — toolbar button,
+      // toggle, or future programmatic exit), keep desktopMode in
+      // sync so the toolbar's toggle reflects reality.
       if (!v) {
         setDesktopModeState(false)
         writeStoredDesktopMode(false)
@@ -85,7 +104,7 @@ export function useDesktopMode() {
   }, [bridge])
 
   // Re-apply desktopMode on launch: if the user had it enabled last
-  // session, ask the Electron window to enter fullscreen again.
+  // session, ask the Electron window to re-enter overlay mode.
   useEffect(() => {
     if (!bridge) return
     if (!desktopMode) return
