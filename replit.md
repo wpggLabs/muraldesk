@@ -8,13 +8,20 @@ A local-first visual desktop pinboard built with React and Vite. Users can pin i
 - **React + Vite** — port 5000, host 0.0.0.0, deployment target is static (`vite build` → `dist/`)
 - **react-rnd** — for drag and resize of board items
 - **Local-only persistence** — `localStorage` for layout, IndexedDB for media blobs
+- **Installable PWA** — manifest + basic app-shell service worker; SW only registers in production builds
 
 ## Project Structure
 
 ```
+public/
+  manifest.webmanifest — PWA manifest (name, short_name, theme_color #0f0f10, icons, standalone)
+  icon.svg             — Primary app icon (gradient + stylized cards)
+  icon-maskable.svg    — Maskable icon variant for adaptive launchers
+  sw.js                — Service worker: app-shell cache (cache-first assets, network-first nav)
 src/
   App.jsx              — Root: canvas, selection state, keyboard shortcuts, handlers, footer
-  main.jsx             — Entry point
+  main.jsx             — Entry point; calls registerServiceWorker()
+  registerSW.js        — Registers /sw.js only in PROD; unregisters any stale SW in dev
   index.css            — Global CSS variables and reset
   lib/
     mediaStore.js      — IndexedDB wrapper for image/video blob persistence
@@ -53,9 +60,17 @@ src/
 - **Export / Import JSON** — round-trips layout. Import is capped at 5 MB / 500 items, validates structure, and sanitizes link URLs (drops `javascript:` and other non-http(s) protocols).
 - **Footer** — subtle bottom-center trust text.
 
+## PWA notes
+
+- Manifest, icons, and service worker live in `public/` so Vite serves them at the site root verbatim.
+- `registerServiceWorker()` is a no-op in dev (and proactively unregisters any leftover SW) so HMR + hydration of IndexedDB media stay rock-solid while iterating.
+- The SW only intercepts same-origin GETs for the static app shell. It explicitly skips `blob:` / cross-origin / `/@vite` / `/@react-refresh` / `/__replco/` URLs, so it never touches the IndexedDB-backed `blob:` URLs that drive image and video cards.
+- Cache name is versioned (`muraldesk-shell-v1`); bump it on releases to force shell refresh.
+
 ## Dev
 
 ```bash
-npm run dev     # starts on port 5000
-npm run build   # production build → dist/
+npm run dev     # starts on port 5000 (no service worker)
+npm run build   # production build → dist/ (PWA assets included)
+npm run preview # serve dist/ locally to test the installable PWA + offline shell
 ```
