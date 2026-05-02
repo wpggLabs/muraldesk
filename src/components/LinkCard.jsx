@@ -10,7 +10,9 @@ export default function LinkCard({ item }) {
     }
   } catch {}
 
-  const faviconUrl = hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=32` : null
+  const faviconUrl = hostname
+    ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`
+    : null
 
   return (
     <div
@@ -19,7 +21,8 @@ export default function LinkCard({ item }) {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        padding: '32px 14px 14px',
+        // Top padding leaves room for the floating mini-toolbar.
+        padding: '34px 14px 14px',
         background: 'var(--surface2)',
         overflow: 'hidden',
       }}
@@ -29,25 +32,52 @@ export default function LinkCard({ item }) {
           <img
             src={faviconUrl}
             alt=""
-            style={{ width: 16, height: 16, borderRadius: 3, flexShrink: 0 }}
+            draggable={false}
+            style={{ width: 16, height: 16, borderRadius: 3, flexShrink: 0, pointerEvents: 'none' }}
           />
         )}
-        <span style={{ color: 'var(--text-muted)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span
+          style={{
+            color: 'var(--text-muted)',
+            fontSize: 11,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           {hostname || 'Link'}
         </span>
       </div>
       {item.title && (
-        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, color: 'var(--text)', lineHeight: 1.4 }}>
+        <div
+          style={{
+            fontWeight: 600,
+            fontSize: 14,
+            marginBottom: 6,
+            color: 'var(--text)',
+            lineHeight: 1.4,
+          }}
+        >
           {item.title}
         </div>
       )}
       {item.description && (
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4, flex: 1, overflow: 'hidden' }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: 'var(--text-muted)',
+            lineHeight: 1.4,
+            flex: 1,
+            overflow: 'hidden',
+          }}
+        >
           {item.description}
         </div>
       )}
       {safeUrl ? (
         <a
+          className="no-drag"
+          onMouseDown={(e) => e.stopPropagation()}
           href={safeUrl}
           target="_blank"
           rel="noopener noreferrer"

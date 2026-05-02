@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function Toolbar({
   onAddImage,
@@ -9,6 +9,8 @@ export default function Toolbar({
   onSampleBoard,
   onExport,
   onImport,
+  isFullscreen,
+  onToggleFullscreen,
 }) {
   const imageInputRef = useRef(null)
   const videoInputRef = useRef(null)
@@ -17,6 +19,21 @@ export default function Toolbar({
   const [linkUrl, setLinkUrl] = useState('')
   const [linkTitle, setLinkTitle] = useState('')
   const [linkDesc, setLinkDesc] = useState('')
+
+  // Auto-dim toolbar when the mouse drifts away from the top of the
+  // canvas, so the workspace feels like a clean mural rather than an app.
+  // Toolbar stays fully visible while hovered, while a dialog is open,
+  // or until the first mouse-move arrives.
+  const [nearTop, setNearTop] = useState(true)
+  const [hovered, setHovered] = useState(false)
+  useEffect(() => {
+    function onMove(e) {
+      setNearTop(e.clientY < 110)
+    }
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [])
+  const dim = !(nearTop || hovered || linkDialog)
 
   function handleImageFile(e) {
     const file = e.target.files[0]
@@ -53,51 +70,71 @@ export default function Toolbar({
 
   return (
     <>
-      <div style={{
-        position: 'fixed',
-        top: 16,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 4,
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 14,
-        padding: '6px 10px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-        backdropFilter: 'blur(12px)',
-        maxWidth: 'calc(100vw - 32px)',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-      }}>
-        <span style={{
-          color: 'var(--accent)',
-          fontWeight: 700,
-          fontSize: 13,
-          marginRight: 6,
-          letterSpacing: 0.5,
-        }}>
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          position: 'fixed',
+          top: 14,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          background: 'rgba(20,20,26,0.78)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          borderRadius: 999,
+          padding: '5px 8px',
+          boxShadow: '0 10px 32px rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          maxWidth: 'calc(100vw - 32px)',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          opacity: dim ? 0.32 : 1,
+          transition: 'opacity 0.25s ease',
+        }}
+      >
+        <span
+          style={{
+            color: 'var(--accent)',
+            fontWeight: 700,
+            fontSize: 12,
+            padding: '0 8px',
+            letterSpacing: 0.5,
+          }}
+        >
           MuralDesk
         </span>
 
-        <ToolBtn icon="🖼" label="Image" onClick={() => imageInputRef.current?.click()} />
-        <ToolBtn icon="🎬" label="Video" onClick={() => videoInputRef.current?.click()} />
-        <ToolBtn icon="📝" label="Note" onClick={onAddNote} />
-        <ToolBtn icon="🔗" label="Link" onClick={() => setLinkDialog(true)} />
+        <PillBtn icon="🖼" label="Image" onClick={() => imageInputRef.current?.click()} />
+        <PillBtn icon="🎬" label="Video" onClick={() => videoInputRef.current?.click()} />
+        <PillBtn icon="📝" label="Note" onClick={onAddNote} />
+        <PillBtn icon="🔗" label="Link" onClick={() => setLinkDialog(true)} />
 
         <Divider />
 
-        <ToolBtn icon="✨" label="Sample" onClick={onSampleBoard} />
-        <ToolBtn icon="↧" label="Export" onClick={onExport} />
-        <ToolBtn icon="↥" label="Import" onClick={() => importInputRef.current?.click()} />
+        <PillBtn icon="✨" label="Sample" onClick={onSampleBoard} />
+        <PillBtn icon="↧" label="Export" onClick={onExport} />
+        <PillBtn icon="↥" label="Import" onClick={() => importInputRef.current?.click()} />
 
         <Divider />
 
-        <ToolBtn icon="🗑" label="Clear" onClick={() => {
-          if (confirm('Clear all items from the board?')) onClear()
-        }} danger />
+        <PillBtn
+          icon={isFullscreen ? '⤡' : '⤢'}
+          label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          onClick={onToggleFullscreen}
+        />
+
+        <Divider />
+
+        <PillBtn
+          icon="🗑"
+          label="Clear"
+          onClick={() => { if (confirm('Clear all items from the board?')) onClear() }}
+          danger
+        />
 
         <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageFile} />
         <input ref={videoInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleVideoFile} />
@@ -105,18 +142,21 @@ export default function Toolbar({
       </div>
 
       {linkDialog && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 99999,
-          background: 'rgba(0,0,0,0.6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }} onClick={() => setLinkDialog(false)}>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onClick={() => setLinkDialog(false)}
+        >
           <form
             onSubmit={handleLinkSubmit}
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             style={{
               background: 'var(--surface)',
               border: '1px solid var(--border)',
@@ -132,7 +172,7 @@ export default function Toolbar({
             <div style={{ fontWeight: 600, fontSize: 15 }}>Add Link Card</div>
             <input
               value={linkUrl}
-              onChange={e => setLinkUrl(e.target.value)}
+              onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="URL (e.g. https://example.com)"
               required
               autoFocus
@@ -140,13 +180,13 @@ export default function Toolbar({
             />
             <input
               value={linkTitle}
-              onChange={e => setLinkTitle(e.target.value)}
+              onChange={(e) => setLinkTitle(e.target.value)}
               placeholder="Title (optional)"
               style={inputStyle}
             />
             <textarea
               value={linkDesc}
-              onChange={e => setLinkDesc(e.target.value)}
+              onChange={(e) => setLinkDesc(e.target.value)}
               placeholder="Description (optional)"
               rows={2}
               style={{ ...inputStyle, resize: 'vertical' }}
@@ -167,33 +207,49 @@ export default function Toolbar({
 }
 
 function Divider() {
-  return <div style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 4px' }} />
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: 1,
+        height: 18,
+        background: 'rgba(255,255,255,0.08)',
+        margin: '0 4px',
+      }}
+    />
+  )
 }
 
-function ToolBtn({ icon, label, onClick, danger }) {
+function PillBtn({ icon, label, onClick, danger }) {
   const [hov, setHov] = useState(false)
   return (
     <button
+      type="button"
       onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       title={label}
+      aria-label={label}
       style={{
-        background: hov ? (danger ? 'rgba(255,79,79,0.15)' : 'var(--surface2)') : 'transparent',
-        color: danger ? (hov ? 'var(--danger)' : 'var(--text-muted)') : hov ? 'var(--text)' : 'var(--text-muted)',
-        border: '1px solid transparent',
-        borderRadius: 8,
-        padding: '4px 8px',
+        background: hov
+          ? danger ? 'rgba(255,79,79,0.18)' : 'rgba(255,255,255,0.08)'
+          : 'transparent',
+        color: danger
+          ? hov ? 'var(--danger)' : 'var(--text-muted)'
+          : hov ? 'var(--text)' : 'var(--text-muted)',
+        border: 'none',
+        borderRadius: 999,
+        padding: '4px 10px',
         fontSize: 13,
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        transition: 'all 0.15s',
+        gap: 5,
+        transition: 'all 0.12s',
         whiteSpace: 'nowrap',
         cursor: 'pointer',
       }}
     >
-      <span>{icon}</span>
+      <span style={{ fontSize: 13, lineHeight: 1 }}>{icon}</span>
       <span style={{ fontSize: 12 }}>{label}</span>
     </button>
   )
