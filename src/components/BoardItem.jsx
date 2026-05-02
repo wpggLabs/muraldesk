@@ -435,11 +435,15 @@ export default function BoardItem({
 
 function IconBtn({ children, onClick, title, highlight, danger }) {
   const [hov, setHov] = useState(false)
+  // The mini-toolbar surface uses --surface-glass-strong, so the
+  // hover/idle button tints come from the same theme tokens the
+  // toolbar pills use — that way light mode shows a black-on-white
+  // tint instead of the previous hardcoded white-on-white (invisible).
   const bg = danger
     ? (hov ? 'var(--danger)' : 'var(--danger-soft)')
     : highlight
       ? 'var(--accent)'
-      : (hov ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.04)')
+      : (hov ? 'var(--btn-hover-strong)' : 'var(--btn-idle)')
   const color = danger
     ? '#fff'
     : highlight

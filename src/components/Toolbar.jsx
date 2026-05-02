@@ -66,6 +66,15 @@ function Toolbar({
   // when the cursor crosses the reveal boundary on the way to a button.
   focusMode = false,
   onToggleFocusMode,
+  // Theme controls. mode is 'dark' | 'light' | 'system' and accent is
+  // one of 4 named colors. The pills cycle through their respective
+  // arrays. State + persistence is owned by useTheme; the toolbar is
+  // purely a view + dispatcher so the cycle is observable from any
+  // future keyboard shortcut without lifting state out of the hook.
+  themeMode = 'dark',
+  themeAccent = 'purple',
+  onCycleThemeMode,
+  onCycleThemeAccent,
   onMinimizeWindow,
   onCloseWindow,
   // Toolbar visibility override driven by App's Ctrl+Shift+T shortcut.
@@ -359,7 +368,7 @@ function Toolbar({
               height: 6,
               borderRadius: '50%',
               background: 'var(--accent)',
-              boxShadow: '0 0 8px rgba(124,108,255,0.7)',
+              boxShadow: '0 0 8px rgba(var(--accent-rgb), 0.7)',
             }}
           />
           MuralDesk
@@ -463,6 +472,30 @@ function Toolbar({
           title={focusMode
             ? 'Focus mode is ON — toolbar hides unless you hover the top of the screen or an item. Click to turn off.'
             : 'Focus mode is OFF — toolbar stays visible. Click to enter focus mode (hover top or any item to reveal).'}
+        />
+
+        <Divider />
+
+        {/* Theme mode cycle: Dark → Light → System → Dark.
+            Active styling is intentionally suppressed — the icon glyph
+            already communicates the current state, so we don't want a
+            permanent accent ring on a setting that's always "set". */}
+        <PillBtn
+          icon={themeMode === 'light' ? '☀' : themeMode === 'system' ? '◑' : '☾'}
+          label={themeMode === 'light' ? 'Light' : themeMode === 'system' ? 'System' : 'Dark'}
+          onClick={onCycleThemeMode}
+          title={`Theme: ${themeMode} — click to cycle (Dark → Light → System)`}
+        />
+
+        {/* Accent cycle: Purple → Blue → Green → Orange → Purple.
+            The icon dot is filled with var(--accent), so it always
+            previews the CURRENT accent (after the click resolves). */}
+        <PillBtn
+          icon="●"
+          iconColor="var(--accent)"
+          label={themeAccent.charAt(0).toUpperCase() + themeAccent.slice(1)}
+          onClick={onCycleThemeAccent}
+          title={`Accent: ${themeAccent} — click to cycle (Purple → Blue → Green → Orange)`}
         />
 
         <Divider />
@@ -599,12 +632,12 @@ function Divider() {
   )
 }
 
-function PillBtn({ icon, label, onClick, danger, active, compact, title }) {
+function PillBtn({ icon, iconColor, label, onClick, danger, active, compact, title }) {
   const [hov, setHov] = useState(false)
   const bg = active
     ? 'var(--accent-soft)'
     : hov
-      ? danger ? 'var(--danger-soft)' : 'rgba(255,255,255,0.07)'
+      ? danger ? 'var(--danger-soft)' : 'var(--btn-hover)'
       : 'transparent'
   const color = danger
     ? hov ? 'var(--danger)' : 'var(--text-muted)'
@@ -640,7 +673,7 @@ function PillBtn({ icon, label, onClick, danger, active, compact, title }) {
         WebkitAppRegion: 'no-drag',
       }}
     >
-      <span style={{ fontSize: 13, lineHeight: 1 }}>{icon}</span>
+      <span style={{ fontSize: 13, lineHeight: 1, color: iconColor || undefined }}>{icon}</span>
       {!compact && <span>{label}</span>}
     </button>
   )
@@ -678,6 +711,7 @@ const submitBtnStyle = {
   fontSize: 13,
   fontWeight: 500,
   cursor: 'pointer',
-  boxShadow: '0 4px 14px rgba(124,108,255,0.32), inset 0 1px 0 rgba(255,255,255,0.12)',
+  // Glow follows the active accent via the rgb-triplet token.
+  boxShadow: '0 4px 14px rgba(var(--accent-rgb), 0.32), inset 0 1px 0 rgba(255,255,255,0.12)',
   transition: 'background var(--t-fast) var(--ease-out)',
 }

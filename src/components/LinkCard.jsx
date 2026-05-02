@@ -131,7 +131,7 @@ function YouTubeEmbed({ item, info, hovered }) {
             type="button"
             onClick={() => setInteract(false)}
             title="Exit interact mode (Esc)"
-            style={{ ...ytBtn, background: 'rgba(108,99,255,0.85)' }}
+            style={{ ...ytBtn, background: 'rgba(var(--accent-rgb), 0.85)' }}
           >
             ✕ Exit interact
           </button>
@@ -217,7 +217,7 @@ function RemoteVideo({ item, info, hovered, onUpdate }) {
           onClick={() => onUpdate && onUpdate(item.id, { loop: !loop })}
           style={{
             ...ctrlBtn,
-            background: loop ? 'rgba(108,99,255,0.75)' : ctrlBtn.background,
+            background: loop ? 'rgba(var(--accent-rgb), 0.75)' : ctrlBtn.background,
           }}
         >
           ↻
