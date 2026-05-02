@@ -38,8 +38,25 @@ export default function BoardItem({
   onSelect,
   onDuplicate,
   onHoverChange,
+  // Snap-to-grid props (driven by useSnap in App). When `snap` is true
+  // we pass react-rnd's native dragGrid + resizeGrid so the underlying
+  // react-draggable / react-resizable libraries handle the actual
+  // pixel-rounding — we don't reinvent the snap math. We additionally
+  // render two faint alignment guide lines at the card's center while
+  // a drag/resize is in progress, as a visual hint that snapping is
+  // active.
+  snap = false,
+  snapGrid = 24,
 }) {
   const [hovered, setHovered] = useState(false)
+  // Live drag/resize state used solely to render the alignment guide
+  // lines while the user is moving or resizing the card. We do NOT
+  // call onUpdate on every drag/resize tick — react-rnd already
+  // batches that into onDragStop / onResizeStop, and per-tick state
+  // updates would thrash the items array (and re-render every other
+  // card on the board). Local state is enough because the guide lines
+  // live inside this BoardItem's render output.
+  const [activeRect, setActiveRect] = useState(null)
   const locked = !!item.locked
   const showControls = hovered || selected
 
@@ -51,11 +68,48 @@ export default function BoardItem({
     if (onHoverChange) onHoverChange(item.id, next)
   }
 
+  // All guide-state lifecycle calls below are gated behind `snap`.
+  // When snap is OFF we never call setActiveRect at any phase of the
+  // drag/resize lifecycle, so the snap-OFF render path is byte-identical
+  // to the pre-snap implementation (no extra local re-renders, no extra
+  // hot-path setState — only the original onUpdate at the end).
+  function handleDragStart() {
+    if (!snap) return
+    // Seed the guide-line state with the card's current position so
+    // the lines appear immediately on drag start, not after the first
+    // mousemove tick.
+    setActiveRect({ x: item.x, y: item.y, width: item.width, height: item.height })
+  }
+
+  function handleDrag(e, d) {
+    if (!snap) return
+    setActiveRect((prev) => prev
+      ? { ...prev, x: d.x, y: d.y }
+      : { x: d.x, y: d.y, width: item.width, height: item.height })
+  }
+
   function handleDragStop(e, d) {
+    if (snap) setActiveRect(null)
     onUpdate(item.id, { x: d.x, y: d.y })
   }
 
+  function handleResizeStart() {
+    if (!snap) return
+    setActiveRect({ x: item.x, y: item.y, width: item.width, height: item.height })
+  }
+
+  function handleResize(e, dir, ref, delta, pos) {
+    if (!snap) return
+    setActiveRect({
+      x: pos.x,
+      y: pos.y,
+      width: parseInt(ref.style.width),
+      height: parseInt(ref.style.height),
+    })
+  }
+
   function handleResizeStop(e, dir, ref, delta, pos) {
+    if (snap) setActiveRect(null)
     onUpdate(item.id, {
       width: parseInt(ref.style.width),
       height: parseInt(ref.style.height),
@@ -134,7 +188,54 @@ export default function BoardItem({
     ...extra,
   })
 
+  // react-rnd's grid props expect `[x, y]` arrays. Passing `undefined`
+  // (rather than `[1, 1]`) keeps the un-snapped path completely
+  // unchanged — the underlying react-draggable / react-resizable code
+  // skips its grid logic entirely when the prop is missing, so snap-OFF
+  // behavior is byte-identical to the pre-snap implementation.
+  const gridArr = snap ? [snapGrid, snapGrid] : undefined
+
+  // Alignment guide lines. Rendered as two thin position:fixed bars
+  // at the card's current center (vertical line at center-X, horizontal
+  // line at center-Y), only while a drag or resize is in progress AND
+  // snap is on. pointerEvents: none means they NEVER affect the
+  // click-through hit-test in Electron transparent-overlay mode — they
+  // are pure decoration.
+  const guides = snap && activeRect ? (
+    <>
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          top: 0,
+          bottom: 0,
+          left: Math.round(activeRect.x + activeRect.width / 2),
+          width: 1,
+          background: 'var(--accent)',
+          opacity: 0.22,
+          pointerEvents: 'none',
+          zIndex: 9998,
+        }}
+      />
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          top: Math.round(activeRect.y + activeRect.height / 2),
+          height: 1,
+          background: 'var(--accent)',
+          opacity: 0.22,
+          pointerEvents: 'none',
+          zIndex: 9998,
+        }}
+      />
+    </>
+  ) : null
+
   return (
+    <>
     <Rnd
       // muraldesk-card-rnd marks this rectangle as an interactive
       // zone for the Electron click-through hook
@@ -145,8 +246,18 @@ export default function BoardItem({
       className="muraldesk-card-rnd"
       position={{ x: item.x, y: item.y }}
       size={{ width: item.width, height: item.height }}
+      onDragStart={handleDragStart}
+      onDrag={handleDrag}
       onDragStop={handleDragStop}
+      onResizeStart={handleResizeStart}
+      onResize={handleResize}
       onResizeStop={handleResizeStop}
+      // dragGrid / resizeGrid are react-rnd passthroughs to the
+      // underlying react-draggable / react-resizable libraries. When
+      // undefined (snap OFF) the libraries skip their grid logic and
+      // behavior is identical to the pre-snap implementation.
+      dragGrid={gridArr}
+      resizeGrid={gridArr}
       onMouseDown={() => {
         onFocus(item.id)
         onSelect && onSelect(item.id)
@@ -304,6 +415,8 @@ export default function BoardItem({
         )}
       </div>
     </Rnd>
+    {guides}
+    </>
   )
 }
 
