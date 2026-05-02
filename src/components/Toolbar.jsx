@@ -131,6 +131,7 @@ export default function Toolbar({
   return (
     <>
       <div
+        data-muraldesk-interactive="true"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -237,6 +238,7 @@ export default function Toolbar({
 
       {linkDialog && (
         <div
+          data-muraldesk-interactive="true"
           style={{
             position: 'fixed',
             inset: 0,

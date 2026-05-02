@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useBoard } from './hooks/useBoard'
 import { useDesktopMode } from './hooks/useDesktopMode'
+import { useElectronClickThrough } from './hooks/useElectronClickThrough'
 import { buildSampleItems } from './lib/sampleBoard'
 import { defaultLinkSize } from './lib/linkType'
 import BoardItem from './components/BoardItem'
@@ -45,6 +46,12 @@ export default function App() {
     document.documentElement.setAttribute('data-electron', 'true')
     return () => document.documentElement.removeAttribute('data-electron')
   }, [isElectron])
+
+  // Click-through for transparent areas (Electron only). When the
+  // cursor is over the toolbar, a pinned item, or a dialog, MuralDesk
+  // captures clicks; everywhere else clicks pass through to the
+  // user's desktop. No-op on the web build.
+  useElectronClickThrough(isElectron)
 
   // Track which items are currently hovered. Used in Electron mode so
   // the floating toolbar can reveal itself whenever the user is
