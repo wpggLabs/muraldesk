@@ -1,0 +1,46 @@
+Improve MuralDesk link behavior.
+
+Current problem:
+When user adds a link, it only creates a card with an Open button. I want links to become playable/visual when possible.
+
+Goal:
+Create smart link cards.
+
+Behavior:
+- If user enters a YouTube URL, embed it directly in the canvas so it can play inside MuralDesk.
+- Support youtube.com/watch?v=, youtu.be/, youtube.com/shorts/, and youtube.com/embed/.
+- Use a safe YouTube embed URL, preferably youtube-nocookie.com/embed/{videoId}.
+- If user enters a direct video URL ending in .mp4, .webm, .ogg, or .mov, show it as a playable video card with controls, loop toggle, and mute toggle if possible.
+- If user enters a direct image/GIF URL ending in .jpg, .jpeg, .png, .gif, .webp, or .svg, show it as an image card.
+- If user enters a normal website URL, keep the current clean link card with Open button.
+- If iframe/embed is blocked or unsafe, fall back to normal Open button.
+- Do not allow javascript:, data:, file:, or other unsafe URL protocols.
+- Only allow http and https.
+
+UI:
+- Embedded YouTube/video should look clean like other canvas objects.
+- No permanent controls unless hovered, matching current canvas mode.
+- Link/video/image items should still drag, resize, duplicate, lock, delete, export, import, and persist.
+
+Persistence:
+- Do not break localStorage layout persistence.
+- Do not break IndexedDB media persistence.
+- Do not break existing uploaded image/video behavior.
+- Link embeds should persist after refresh.
+
+Do not add backend.
+Do not add login.
+Do not add payments.
+Do not rewrite the whole app.
+
+Test:
+1. Add YouTube link, confirm it plays inside MuralDesk.
+2. Refresh, confirm YouTube embed remains.
+3. Add direct .mp4 link, confirm it plays if browser allows.
+4. Add direct image link, confirm it displays as image.
+5. Add normal website link, confirm it stays as Open button card.
+6. Try javascript:alert(1), confirm it is blocked/non-clickable.
+7. Confirm drag/resize/lock/duplicate/delete still work.
+8. Confirm export/import still work.
+
+Report exact files changed and test results.

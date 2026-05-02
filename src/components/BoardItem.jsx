@@ -41,7 +41,7 @@ export default function BoardItem({
       case 'image': return <ImageCard item={item} />
       case 'video': return <VideoCard item={item} onUpdate={onUpdate} hovered={showControls} />
       case 'note':  return <NoteCard item={item} onUpdate={onUpdate} hovered={showControls} />
-      case 'link':  return <LinkCard item={item} />
+      case 'link':  return <LinkCard item={item} onUpdate={onUpdate} hovered={showControls} />
       default: return null
     }
   }

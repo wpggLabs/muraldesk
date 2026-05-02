@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useBoard } from './hooks/useBoard'
 import { buildSampleItems } from './lib/sampleBoard'
+import { defaultLinkSize } from './lib/linkType'
 import BoardItem from './components/BoardItem'
 import Toolbar from './components/Toolbar'
 import EmptyState from './components/EmptyState'
@@ -55,7 +56,10 @@ export default function App() {
   }, [addItem])
 
   const handleAddLink = useCallback((url, title, description) => {
-    addItem('link', { url, title, description, width: 280, height: 160 })
+    // Pick a default size that fits the link's preview kind: 16:9-ish for
+    // YouTube / direct video, taller for images, compact for plain web.
+    const { width, height } = defaultLinkSize(url)
+    addItem('link', { url, title, description, width, height })
   }, [addItem])
 
   const handleSampleBoard = useCallback(() => {
