@@ -1,0 +1,100 @@
+Do a read-only product and codebase opportunity audit for MuralDesk.
+
+Do not modify code.
+Do not install packages.
+Do not refactor.
+Do not touch Electron overlay, click-through, storage, backup, or package dependencies.
+
+Goal:
+Tell me what more can be done with MuralDesk from here, ranked by value vs. risk.
+
+Context:
+MuralDesk is now a local-first desktop mural layer with:
+- Electron transparent overlay
+- click-through empty areas
+- full-display Desktop Mode
+- drag/resize/lock/duplicate/delete
+- images/videos/notes/links
+- smart embeds for YouTube, Vimeo, SoundCloud, Spotify, CodePen
+- direct image/video links
+- localStorage layout persistence
+- IndexedDB media persistence
+- export/import/backup
+- PWA/web version
+- no backend/login/cloud
+
+I want to use the remaining buildathon time wisely.
+
+Audit and recommend:
+
+1. Best features to add before submission
+Rank by:
+- demo impact
+- user value
+- implementation risk
+- chance of breaking current overlay/click-through/storage
+
+2. Features to avoid before submission
+Especially anything that could break:
+- Electron overlay
+- click-through
+- full-display Desktop Mode
+- IndexedDB/localStorage persistence
+- export/import
+- web/PWA build
+
+3. Quick wins under 30 minutes
+Examples:
+- README polish
+- screenshot/demo assets
+- sample board polish
+- board opacity
+- snap grid
+- keyboard shortcuts
+- empty state
+- small UX cleanup
+
+4. Medium features under 2 hours
+Examples:
+- board opacity/focus mode
+- snap guides
+- better tray menu
+- startup options
+- better backup UX
+- better app icon/installer polish
+
+5. Big future roadmap
+Examples:
+- per-monitor overlay windows
+- wallpaper-layer experiments
+- board profiles
+- templates
+- cloud sync later
+- sharing boards
+- marketplace/templates
+
+6. Product positioning
+Tell me:
+- What MuralDesk is strongest at
+- Who the first users are
+- Best use cases
+- Best tagline
+- Best 60-second demo flow
+- Best README/GitHub improvements
+
+7. Technical debt/risk
+Tell me:
+- What files are most dangerous to touch
+- What should be frozen before submission
+- What small safe patches are worth doing
+- What should wait until after submission
+
+Output format:
+A. Executive recommendation
+B. Top 10 next improvements ranked
+C. Do now / do later / do not touch
+D. Best final buildathon plan
+E. Exact prompts I should run next, in order
+
+Important:
+Do not change code. Report only.
