@@ -55,6 +55,14 @@ export default function BoardItem({
   // even at boardOpacity = 0.3. The persisted item shape is NOT
   // mutated, so refresh / export / import round-trip unchanged.
   boardOpacity = 1,
+  // Single-card Focus mode (transient — owned by App). Double-click
+  // sets focusedItemId in App; App passes `focused={true}` back to
+  // the matching BoardItem, which renders a centered, enlarged
+  // overlay clone of the card content. NO geometry mutation.
+  focused = false,
+  onRequestFocus,
+  onExitFocus,
+  isElectron = false,
 }) {
   const [hovered, setHovered] = useState(false)
   // Live drag/resize state used solely to render the alignment guide
@@ -291,6 +299,16 @@ export default function BoardItem({
       }}
     >
       <div
+        onDoubleClick={(e) => {
+          // Double-click anywhere on the card body enters Focus mode.
+          // Skipped on .no-drag descendants (mini-toolbar, link chrome,
+          // textarea, video controls) so double-clicking text to select
+          // a word, or double-clicking the link "Open" button, doesn't
+          // trigger Focus. .closest('.no-drag') walks up to catch
+          // children of the chrome bars too.
+          if (e.target && e.target.closest && e.target.closest('.no-drag, textarea, input, button, a')) return
+          if (onRequestFocus) onRequestFocus()
+        }}
         style={{
           width: '100%',
           height: '100%',
@@ -429,7 +447,124 @@ export default function BoardItem({
       </div>
     </Rnd>
     {guides}
+    {focused && (
+      <FocusOverlay
+        isElectron={isElectron}
+        onExit={onExitFocus}
+        renderContent={renderContent}
+      />
+    )}
     </>
+  )
+}
+
+// Centered, enlarged overlay copy of the card content. Rendered
+// ABOVE the board (z-index 9990 — below the link dialog at 99999
+// and below the alignment guides' z-index but above every Rnd
+// card). The original Rnd stays mounted underneath at its original
+// position/size — we never touch item.x/y/width/height — so on
+// exit (Esc, click backdrop, click ✕) the layout snaps back exactly
+// as it was, and a page refresh while focused has no persisted
+// effect at all.
+//
+// Web build: paints a subtle dark backdrop + blur so the focused
+// card visually pops against the board.
+// Electron transparent-overlay build (`isElectron`): renders NO
+// backdrop — just the centered content. The container is still
+// pointer-events: none so empty space stays click-through, with
+// pointer-events: auto restored on the actual focused card and on
+// the floating Exit button so the user can interact with both.
+//
+// data-muraldesk-interactive="true" on the focused card surface
+// keeps the Electron click-through hook treating the focused
+// region as fully interactive — same convention the toolbar / link
+// dialog / shortcuts modal already use.
+function FocusOverlay({ isElectron, onExit, renderContent }) {
+  // Re-create the same chunk of card DOM the Rnd renders, but at
+  // viewport-centered, ~80%-sized geometry. The card content is
+  // re-mounted (new React subtree) — Interact mode in iframes resets
+  // because that's per-card transient state in LinkCard. That's the
+  // right tradeoff: Focus is a quick "look at this" gesture, and
+  // re-mounting keeps the implementation simple and avoids any
+  // ambiguity about which copy "owns" the iframe.
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Focused card"
+      data-muraldesk-interactive="true"
+      onClick={(e) => {
+        // Click on the backdrop (the overlay root itself) exits.
+        // Clicks on the focused card stop-propagation below so they
+        // never reach this handler.
+        if (e.target === e.currentTarget) onExit && onExit()
+      }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9990,
+        // Web: subtle dim + blur. Electron transparent-overlay: no
+        // background at all so the desktop underneath stays visible
+        // — the user opted into a transparent mural and we respect it.
+        background: isElectron ? 'transparent' : 'rgba(0,0,0,0.55)',
+        backdropFilter: isElectron ? 'none' : 'blur(8px)',
+        WebkitBackdropFilter: isElectron ? 'none' : 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        // In Electron with no backdrop, leave the empty space click-
+        // through so the desktop underneath still receives clicks
+        // outside the focused card. The card itself re-enables
+        // pointer-events below.
+        pointerEvents: isElectron ? 'none' : 'auto',
+        animation: 'muraldesk-overlay-in 200ms var(--ease-out) both',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
+          position: 'relative',
+          width: 'min(80vw, 1100px)',
+          height: 'min(80vh, 720px)',
+          borderRadius: 'var(--radius)',
+          overflow: 'hidden',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px var(--border-strong)',
+          background: 'var(--surface)',
+          pointerEvents: 'auto',
+          animation: 'muraldesk-dialog-in 220ms var(--ease-out) both',
+        }}
+      >
+        {renderContent()}
+        {/* Exit affordance — top-right, .no-drag so it never starts
+            a (non-existent in this overlay, but kept for consistency)
+            drag, and stops propagation so the click never reaches
+            the backdrop's exit handler. */}
+        <button
+          type="button"
+          className="no-drag"
+          onClick={(e) => { e.stopPropagation(); onExit && onExit() }}
+          onMouseDown={(e) => e.stopPropagation()}
+          title="Exit Focus (Esc)"
+          aria-label="Exit Focus mode"
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            zIndex: 40,
+            background: 'rgba(0,0,0,0.65)',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 6,
+            padding: '4px 9px',
+            fontSize: 12,
+            cursor: 'pointer',
+          }}
+        >
+          ✕ Exit Focus
+        </button>
+      </div>
+    </div>
   )
 }
 
