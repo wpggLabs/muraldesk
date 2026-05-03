@@ -39,6 +39,15 @@ export default function NoteCard({ item, onUpdate, hovered }) {
     if (editing && textRef.current) textRef.current.focus()
   }, [editing])
 
+  function stopEvent(e) {
+    e.stopPropagation()
+  }
+
+  function beginEditing(e) {
+    if (e) e.stopPropagation()
+    setEditing(true)
+  }
+
   return (
     <div
       style={{
@@ -97,8 +106,13 @@ export default function NoteCard({ item, onUpdate, hovered }) {
         <textarea
           ref={textRef}
           className="no-drag"
+          data-muraldesk-interactive="true"
           value={item.text || ''}
           onChange={(e) => onUpdate(item.id, { text: e.target.value })}
+          onFocus={stopEvent}
+          onMouseDown={stopEvent}
+          onClick={stopEvent}
+          onKeyDown={stopEvent}
           onBlur={() => setEditing(false)}
           style={{
             flex: 1,
@@ -114,12 +128,17 @@ export default function NoteCard({ item, onUpdate, hovered }) {
             lineHeight: 1.5,
             resize: 'none',
             width: '100%',
+            pointerEvents: 'auto',
+            userSelect: 'text',
           }}
           placeholder="Write a note..."
         />
       ) : (
         <div
-          onDoubleClick={() => setEditing(true)}
+          className="no-drag"
+          data-muraldesk-interactive="true"
+          onMouseDown={beginEditing}
+          onDoubleClick={beginEditing}
           style={{
             flex: 1,
             // Same textColor logic; placeholder uses opacity rather
@@ -133,6 +152,8 @@ export default function NoteCard({ item, onUpdate, hovered }) {
             wordBreak: 'break-word',
             cursor: 'text',
             overflow: 'auto',
+            pointerEvents: 'auto',
+            userSelect: 'text',
           }}
         >
           {item.text || 'Double-click to edit note...'}
