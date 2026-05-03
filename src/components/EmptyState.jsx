@@ -50,7 +50,7 @@ export default function EmptyState({ onSampleBoard, onAddNote }) {
           opacity: 0.92,
         }}
       >
-        Drop images, videos, links, or notes anywhere
+        Drop images, videos, links, or notes anywhere.
       </p>
       <p
         style={{

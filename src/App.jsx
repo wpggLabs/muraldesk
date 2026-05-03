@@ -331,14 +331,16 @@ export default function App() {
   }, [items, updateItem])
 
   const handleSampleBoard = useCallback(() => {
-    // In Electron Desktop Mode the rich onboarding sample (with two
-    // Welcome / Tips note panels) feels too "app-like" for what is
-    // meant to be a clean desktop mural layer — minimal mode returns
-    // just one image, one link, and a small sticky note centered on
-    // the current display. Web/PWA and normal-window Electron keep
-    // the richer sample.
-    addItems(buildSampleItems({ minimal: desktopMode }))
-  }, [addItems, desktopMode])
+    // Always use the minimal sample (one image, one link, one small
+    // sticky note centered on the current viewport). The previous
+    // "rich" 3×3 grid included two onboarding-style note panels
+    // (Welcome / Local-first) that felt like tutorial overlays
+    // disguised as user content — wrong tone for a visual mural,
+    // and the grid also overflowed below 1280×720 viewports. The
+    // minimal layout reads as real mural content on every build
+    // (Electron Desktop Mode, normal-window Electron, web/PWA).
+    addItems(buildSampleItems({ minimal: true }))
+  }, [addItems])
 
   // Quick layout export: a small JSON file with item metadata only.
   // Media (images/videos) is referenced by IDB id but the bytes are

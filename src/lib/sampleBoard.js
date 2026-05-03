@@ -12,8 +12,8 @@ const SAMPLE_SVG = `
   <rect width="400" height="280" fill="url(#g)"/>
   <circle cx="100" cy="90" r="60" fill="rgba(255,255,255,0.16)"/>
   <circle cx="300" cy="200" r="90" fill="rgba(0,0,0,0.18)"/>
-  <text x="200" y="160" text-anchor="middle" fill="white" font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="22" font-weight="700" opacity="0.92">Sample image</text>
-  <text x="200" y="186" text-anchor="middle" fill="white" font-family="-apple-system,Segoe UI,Roboto,sans-serif" font-size="12" opacity="0.7">Replace with your own</text>
+  <circle cx="220" cy="150" r="36" fill="rgba(255,255,255,0.22)"/>
+  <circle cx="180" cy="170" r="22" fill="rgba(0,0,0,0.14)"/>
 </svg>`.trim()
 
 const SAMPLE_IMAGE_SRC = 'data:image/svg+xml;utf8,' + encodeURIComponent(SAMPLE_SVG)

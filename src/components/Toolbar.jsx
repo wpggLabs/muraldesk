@@ -108,11 +108,23 @@ function Toolbar({
   const [moreOpen, setMoreOpen] = useState(false)
   const moreBtnRef = useRef(null)
   const morePanelRef = useRef(null)
-  // Compact toolbar = Electron Desktop Mode only. Web/PWA and normal-
-  // window Electron keep the full pill row. Toggling this string drives
-  // both (a) which pills render inline and (b) whether the More button
-  // + popover render at all.
-  const compact = desktopMode
+  // Compact toolbar = Electron Desktop Mode OR narrow viewport (<1500px).
+  // Without the viewport check the full pill row wraps to 2-3 rows on
+  // common laptop widths (1280×720 / 1366×768) and the "floating pill"
+  // becomes a heavy dashboard brick. The same More popover that handles
+  // Desktop Mode handles narrow web — single source of truth, identical
+  // behavior. The resize listener keeps it live as the user resizes.
+  const COMPACT_BREAKPOINT_PX = 1500
+  const [viewportW, setViewportW] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1920
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    function onResize() { setViewportW(window.innerWidth) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const compact = desktopMode || viewportW < COMPACT_BREAKPOINT_PX
   // Auto-close the More popover whenever we leave compact mode (e.g.
   // user clicks Exit Desktop), and install a global click-outside +
   // Escape listener while open. The popover itself stops propagation.
@@ -428,6 +440,18 @@ function Toolbar({
           onClick={() => onOpenShortcuts && onOpenShortcuts()}
         />
 
+        {/* Web Fullscreen lives in the advanced cluster so it follows the
+            compact path: inline on wide web viewports, inside More on
+            narrow web viewports. Hidden in Electron because the Desktop
+            Mode pill below already drives the equivalent behavior. */}
+        {!isElectron && (
+          <PillBtn
+            icon={isFullscreen ? '⤡' : '⤢'}
+            label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            onClick={onToggleFullscreen}
+          />
+        )}
+
         <PillBtn
           icon="🗑"
           label="Clear"
@@ -494,32 +518,34 @@ function Toolbar({
           WebkitAppRegion: isElectron ? 'drag' : undefined,
         }}
       >
-        <span
-          style={{
-            color: 'var(--text)',
-            fontFamily: "'VastagoBlack', 'VastagoRegular', 'Inter', system-ui, sans-serif",
-            fontWeight: 900,
-            fontSize: 12.5,
-            padding: '0 10px 0 8px',
-            letterSpacing: 0.2,
-            textTransform: 'uppercase',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
+        {!compact && (
           <span
-            aria-hidden
             style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: 'var(--accent)',
-              boxShadow: '0 0 8px rgba(var(--accent-rgb), 0.7)',
+              color: 'var(--text)',
+              fontFamily: "'VastagoBlack', 'VastagoRegular', 'Inter', system-ui, sans-serif",
+              fontWeight: 900,
+              fontSize: 12.5,
+              padding: '0 10px 0 8px',
+              letterSpacing: 0.2,
+              textTransform: 'uppercase',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
             }}
-          />
-          MuralDesk
-        </span>
+          >
+            <span
+              aria-hidden
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: 'var(--accent)',
+                boxShadow: '0 0 8px rgba(var(--accent-rgb), 0.7)',
+              }}
+            />
+            MuralDesk
+          </span>
+        )}
 
         <PillBtn icon="🖼" label="Image" onClick={() => imageInputRef.current?.click()} />
         <PillBtn icon="🎬" label="Video" onClick={() => videoInputRef.current?.click()} />
@@ -555,22 +581,13 @@ function Toolbar({
         )}
 
         {/*
-          The Fullscreen button is web/PWA only. In Electron the Desktop
-          Mode button below already drives the equivalent behavior (the
-          BrowserWindow expands to cover the current display via
-          setBounds(display.bounds) — see electron/main.cjs), so showing
-          two redundant toggles makes the toolbar feel cluttered and
-          "app-like". Web keeps the Fullscreen button so the
-          Ctrl/Cmd+Shift+F shortcut and toolbar control still pair up.
-          Hidden in compact mode (which is Electron-only anyway).
+          The Fullscreen button is web/PWA only — it now lives inside
+          renderAdvancedPills() so it follows the same compact path as
+          every other advanced action: inline on wide viewports, inside
+          More on narrow viewports / Desktop Mode. In Electron the
+          Desktop Mode button below already drives the equivalent
+          behavior, so Fullscreen is hidden in Electron.
         */}
-        {!isElectron && !compact && (
-          <PillBtn
-            icon={isFullscreen ? '⤡' : '⤢'}
-            label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-            onClick={onToggleFullscreen}
-          />
-        )}
 
         {isElectron && (
           <PillBtn
