@@ -1,0 +1,213 @@
+Do a full bug audit of MuralDesk before final buildathon submission.
+
+READ-ONLY ONLY.
+
+Do not modify code.
+Do not install packages.
+Do not refactor.
+Do not auto-fix anything.
+Do not touch Electron overlay/click-through/storage/backup/package.json/service worker.
+
+Goal:
+Find real bugs, regressions, broken flows, and demo-breaking issues after the latest compact toolbar + sample board visual polish.
+
+Audit these areas:
+
+1. Build/runtime
+- Run npm run build:web
+- Run node --check electron/main.cjs
+- Run node --check electron/preload.cjs
+- Check for console errors if app is running
+- Check for dead imports
+- Check for broken JSX
+- Check that Vite dev still works
+
+2. Toolbar regressions
+Recent changes:
+- compact toolbar at viewport width <1500
+- wordmark hidden in compact
+- Fullscreen moved into More
+- sample board minimal everywhere
+
+Check:
+- Toolbar does not wrap at 1280×720
+- More button opens/closes correctly
+- More menu contains advanced actions
+- Fullscreen still exists on web inside More
+- Desktop/Exit Desktop still exists in Electron
+- Close/minimize still exist in Electron
+- Clear still works from More
+- Export/Backup/Import still work from More
+- Tidy still works from More
+- Snap/Board opacity/Focus/Theme/Accent controls still work
+- Toolbar reveal/hide still works in Electron Desktop Mode
+- Toolbar does not flicker
+- Toolbar remains interactive with click-through logic
+
+3. Sample board bugs
+Check:
+- Sample button works
+- Minimal sample board creates good items
+- No overlaps at 1280×720
+- No giant Welcome/Tips panels
+- Sample cards are not off-screen
+- Tidy works after Sample
+- Backup/export works after Sample
+- All sample URLs are safe and render/fallback correctly
+- No broken embed URLs
+
+4. Canvas/item bugs
+Check:
+- Add image
+- Add video
+- Add note
+- Add link
+- Drag items
+- Resize items
+- Lock/unlock
+- Duplicate
+- Delete
+- Focus mode if implemented
+- Tidy
+- Snap if implemented
+- Board opacity if implemented
+- Theme/accent if implemented
+- Items can move across full display in Electron Desktop Mode
+- Items do not get permanently stuck off-screen
+- Hover mini-toolbar works
+- Resize handles are not blocked by hover controls
+
+5. Persistence bugs
+Check:
+- Refresh after adding image: image persists
+- Refresh after adding video: video persists
+- Refresh after adding note: note persists
+- Refresh after adding embed: embed persists
+- Delete item, refresh: it does not come back
+- Duplicate media item, refresh: duplicate persists
+- Import/export layout
+- Backup export/import with uploaded media
+- Object URL cleanup/revocation
+- Orphan IndexedDB cleanup
+- Corrupt localStorage fallback
+- StrictMode double-mount safety
+
+6. Smart link/embed bugs
+Test or inspect:
+- YouTube
+- Vimeo
+- SoundCloud
+- Spotify
+- CodePen
+- Direct .mp4/.webm video
+- Direct image URL
+- Normal web link
+- Unsafe links:
+  - javascript:
+  - data:
+  - file:
+  - mailto:
+  - vbscript:
+  - ftp:
+
+Check:
+- unsafe links blocked
+- external links open externally in Electron
+- Electron does not navigate away internally
+- iframe interact mode works
+- Esc exits interact mode
+- drag/resize works around iframes
+
+7. Electron-specific bugs
+Inspect and report:
+- Transparent frameless window
+- Click-through empty areas
+- First-click click-through state
+- Toolbar/card interactive zones
+- Desktop Mode covers full display
+- Exit Desktop Mode restores prior window bounds
+- Normal window bounds not overwritten by overlay bounds
+- Tray show/hide/quit behavior
+- Close/minimize behavior
+- Single-instance lock if present
+- Start minimized/start Desktop Mode if implemented
+- Display mode/current display/all displays if implemented
+- Ctrl/Cmd+Shift+D behavior
+- Ctrl/Cmd+Shift+F behavior if still used
+- Replit limitation documented
+
+8. PWA/web bugs
+Check:
+- Web/PWA still works
+- Electron-only buttons hidden on web
+- Fullscreen available on web via More
+- Service worker does not run in dev
+- Service worker does not run under file:// Electron
+- Manifest/icons valid
+- Fonts load locally
+- Vastago works
+- No broken README image refs
+
+9. Security bugs
+Inspect:
+- contextIsolation true
+- sandbox true
+- nodeIntegration false
+- IPC sender scoping
+- IPC argument sanitization
+- setIgnoreMouseEvents safety
+- close/minimize IPC safety
+- tray IPC safety
+- will-navigate blocking
+- setWindowOpenHandler behavior
+- no Node primitives leaked
+- no remote module
+- no unsafe eval
+- link/import/backup sanitization
+
+10. Release/demo bugs
+Check:
+- README commands match package.json
+- BUILDATHON_SUBMISSION.md matches actual shortcuts and features
+- docs are not stale
+- no placeholder submission links
+- .exe output path documented correctly
+- no broken screenshot paths
+- npm audit output, but do not fix
+- package version matches installer name
+- build output size
+
+Output format:
+
+A. Executive verdict
+PASS / PASS WITH WARNINGS / FAIL
+
+B. Top bugs ranked
+For each:
+- severity: HIGH / MEDIUM / LOW
+- area
+- exact file(s)
+- bug description
+- reproduction steps or evidence
+- why it matters
+- blocks demo? yes/no
+- recommended fix
+- fix before submission or after submission
+
+C. Regression checklist
+Use ✅ / ⚠️ / ❌
+
+D. Commands run and results
+
+E. Files inspected
+
+F. Do-not-touch list
+
+G. Safe fixes to do now
+Only list fixes that are small and low-risk.
+
+H. Fixes to avoid before submission
+
+Important:
+If you find HIGH severity bugs, report only. Do not fix.
+If you find only LOW polish issues, say we should stop coding and submit.
