@@ -171,3 +171,9 @@ temp/
 
 # Ignore pasted AI prompt/export notes
 attached_assets/Pasted-*.txt
+
+# Local agent metadata
+.agents/
+
+# Pasted AI prompt/export notes
+attached_assets/Pasted-*.txt
