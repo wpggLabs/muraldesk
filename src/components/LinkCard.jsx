@@ -94,9 +94,9 @@ export default function LinkCard({ item, hovered, onUpdate }) {
     return <RemoteVideo item={item} info={c} hovered={hovered} onUpdate={onUpdate} />
   }
   if (c.kind === 'image') {
-    return <RemoteImage item={item} info={c} />
+    return <RemoteImage item={item} info={c} hovered={hovered} />
   }
-  return <WebLink item={item} info={c} />
+  return <WebLink item={item} info={c} hovered={hovered} />
 }
 
 // ----- YouTube ---------------------------------------------------------------
@@ -163,6 +163,7 @@ function YouTubeEmbed({ item, info, hovered }) {
       <ChromeBar visible={showChrome}>
         <InteractToggle interact={interact} setInteract={setInteract} />
         <OpenLink href={info.watchUrl} title="Open on YouTube" />
+        <CopyLink url={info.watchUrl} title="Copy YouTube URL" />
       </ChromeBar>
     </div>
   )
@@ -230,6 +231,7 @@ function IframeEmbed({ item, info, hovered, label, allow, background = '#000' })
       <ChromeBar visible={showChrome}>
         <InteractToggle interact={interact} setInteract={setInteract} />
         <OpenLink href={info.watchUrl} title={`Open ${label}`} />
+        <CopyLink url={info.watchUrl} title={`Copy ${label} URL`} />
       </ChromeBar>
     </div>
   )
@@ -298,6 +300,11 @@ function RemoteVideo({ item, info, hovered, onUpdate }) {
         >
           ↻
         </button>
+        {/* Open + Copy on direct video URL — only meaningful when there's
+            a real http(s) URL (classifyLink already guarantees this for
+            kind === 'video') so they're always safe to render here. */}
+        <OpenLink href={info.url} title="Open original video" />
+        <CopyLink url={info.url} title="Copy video URL" />
       </div>
     </div>
   )
@@ -305,9 +312,12 @@ function RemoteVideo({ item, info, hovered, onUpdate }) {
 
 // ----- Direct image URL ------------------------------------------------------
 
-function RemoteImage({ item, info }) {
+// Hover chrome added so the user can open the original image in a new
+// tab or copy its URL. Marked .no-drag and stops mousedown so the
+// buttons don't start a card drag. Hidden until hovered.
+function RemoteImage({ item, info, hovered }) {
   return (
-    <div style={{ width: '100%', height: '100%', background: '#000' }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', background: '#000' }}>
       <img
         src={info.url}
         alt={item.title || ''}
@@ -320,13 +330,17 @@ function RemoteImage({ item, info }) {
           pointerEvents: 'none',
         }}
       />
+      <ChromeBar visible={hovered}>
+        <OpenLink href={info.url} title="Open original image" />
+        <CopyLink url={info.url} title="Copy image URL" />
+      </ChromeBar>
     </div>
   )
 }
 
 // ----- Plain web URL ---------------------------------------------------------
 
-function WebLink({ item, info }) {
+function WebLink({ item, info, hovered }) {
   const safe = info.kind === 'web'
   const hostname = safe ? info.hostname : ''
   const safeUrl = safe ? info.url : ''
@@ -416,6 +430,16 @@ function WebLink({ item, info }) {
         >
           Unsafe URL
         </span>
+      )}
+      {/* Hover-only Copy URL chip. Only rendered when there's a real
+          safe http(s) URL — unsafe URLs (which render the placeholder
+          above) never expose a copy affordance. The big "Open →" CTA
+          stays as the primary discovery affordance; this is the
+          secondary "I want the URL itself" path. */}
+      {safeUrl && (
+        <ChromeBar visible={hovered}>
+          <CopyLink url={safeUrl} title="Copy link URL" />
+        </ChromeBar>
       )}
     </div>
   )
@@ -512,11 +536,91 @@ function OpenLink({ href, title }) {
       target="_blank"
       rel="noopener noreferrer"
       title={title}
+      // .no-drag + stopPropagation prevent a card drag from starting
+      // when the user clicks the link inside RemoteVideo's mini bar
+      // (which is not wrapped in ChromeBar so it doesn't inherit those).
+      className="no-drag"
+      onMouseDown={(e) => e.stopPropagation()}
       style={{ ...ytBtn, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
     >
       ↗
     </a>
   )
+}
+
+// Hover-only "Copy URL" chip. Tries the modern Clipboard API first;
+// falls back to a hidden-textarea + execCommand('copy') for non-secure
+// contexts (file://, older Electron renderers); silently no-ops if both
+// fail. Briefly flashes a ✓ on success so the user gets feedback
+// without us pulling in a toast/snackbar dependency.
+//
+// `url` is always the already-validated safe http(s) URL produced by
+// classifyLink — never the raw user input — so what lands on the
+// clipboard matches what the embed actually loads.
+function CopyLink({ url, title = 'Copy URL' }) {
+  const [copied, setCopied] = useState(false)
+  if (!url) return null
+  return (
+    <button
+      type="button"
+      title={copied ? 'Copied!' : title}
+      aria-label={title}
+      // .no-drag + stopPropagation so clicks here never start a drag,
+      // even when this is rendered outside a ChromeBar (e.g. in
+      // RemoteVideo's mini control row).
+      className="no-drag"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={async () => {
+        const ok = await copyToClipboard(url)
+        if (ok) {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 1200)
+        }
+      }}
+      style={{
+        ...ytBtn,
+        background: copied
+          ? 'rgba(var(--accent-rgb), 0.85)'
+          : ytBtn.background,
+      }}
+    >
+      {copied ? '✓' : '⧉'}
+    </button>
+  )
+}
+
+async function copyToClipboard(text) {
+  // Modern path — only available in secure contexts (https / localhost).
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    // fall through to execCommand fallback
+  }
+  // Legacy fallback for non-secure contexts (file://, older Electron
+  // renderers without secure-context). Creates an off-screen textarea,
+  // selects its contents, and triggers the deprecated-but-still-working
+  // document.execCommand('copy'). Silently returns false if either step
+  // throws — caller treats that as "do nothing", no error UI.
+  try {
+    if (typeof document === 'undefined') return false
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.position = 'fixed'
+    ta.style.top = '-1000px'
+    ta.style.left = '0'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand && document.execCommand('copy')
+    document.body.removeChild(ta)
+    return !!ok
+  } catch {
+    return false
+  }
 }
 
 const ctrlBtn = {
