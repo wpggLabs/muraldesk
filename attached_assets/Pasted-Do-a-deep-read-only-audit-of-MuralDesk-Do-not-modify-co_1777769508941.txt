@@ -1,0 +1,264 @@
+Do a deep read-only audit of MuralDesk.
+
+Do not modify code.
+Do not install packages.
+Do not refactor.
+Do not fix anything yet.
+Do not touch Electron overlay, click-through, storage, backup, service worker, or package dependencies.
+
+Goal:
+Audit the entire current project after all recent changes, including Vastago font branding, README/GitHub polish, Electron desktop overlay, click-through, smart embeds, backup/export, PWA, and release readiness.
+
+Audit these areas:
+
+1. Vastago font audit
+- Check whether Vastago font files exist in the repo.
+- Check exact font file paths.
+- Check whether src/index.css has correct @font-face rules.
+- Check whether app UI uses Vastago as the default font.
+- Check whether MuralDesk logo/title/headings use VastagoBlack or equivalent.
+- Check whether Google Fonts / Inter CDN is still loaded.
+- Check whether external font loading contradicts local-first/no-cloud claims.
+- Check whether web/PWA and Electron both load the font correctly.
+- Check fallback font stack.
+- Check whether README claims custom font incorrectly.
+- Check whether README uses a hero image instead of trying to force GitHub Markdown font.
+- Do not add or download fonts.
+
+2. README / GitHub presentation audit
+- Does README look professional and premium?
+- Is the hero section strong?
+- Are badges clean and not excessive?
+- Are screenshots/hero assets referenced correctly?
+- Are any image paths broken?
+- Is the text too long/dense?
+- Is the product positioning clear?
+- Does it avoid fake claims?
+- Does it avoid saying full wallpaper engine if not true?
+- Does it avoid saying full multi-monitor support if not fully implemented?
+- Is license wording correct?
+- Are install/build commands accurate?
+- Are .exe output paths accurate?
+- Are limitations honest?
+
+3. Product/UX audit
+- Does Desktop Mode feel like pinned objects on desktop, not an app dashboard?
+- Is toolbar too crowded?
+- Is toolbar easy to reveal?
+- Does toolbar hide correctly after adding items?
+- Are Welcome/Tips cards still too big in Desktop Mode?
+- Does Sample board look premium?
+- Are item hover controls compact?
+- Is the app visually clean enough for demo?
+- Does it feel buildathon-ready?
+
+4. Electron overlay audit
+- Transparent frameless window
+- Click-through empty areas
+- Toolbar and cards remain interactive
+- Desktop Mode covers full display
+- Exit Desktop Mode restores normal window bounds
+- Normal bounds are not overwritten by overlay bounds
+- Tray behavior
+- Close/minimize behavior
+- Single-instance lock status
+- Startup behavior
+- Ctrl/Cmd + Shift + D behavior
+- Click-through first-click behavior
+- Multi-monitor limitations
+- Windows-specific risks
+
+5. Canvas / drag / resize audit
+- Items can move across the full current display in Desktop Mode.
+- Items are not bounded by a smaller wrapper.
+- react-rnd bounds are correct.
+- Fast dragging does not break.
+- Resize handles work.
+- Hover controls do not block resize.
+- Lock/unlock works.
+- Duplicate works.
+- Tidy works if implemented.
+- Focus mode works if implemented.
+- Snap works if implemented.
+- Board opacity/theme controls work if implemented.
+
+6. Storage/persistence audit
+- localStorage layout persistence
+- IndexedDB media blob persistence
+- Uploaded image persistence
+- Uploaded video persistence
+- YouTube/Vimeo/SoundCloud/Spotify/CodePen link persistence
+- Direct image/video URL persistence
+- Note persistence
+- Delete persistence
+- Duplicate persistence
+- Export/import
+- Backup export/import
+- Object URL cleanup/revocation
+- Orphan IndexedDB blob cleanup
+- StrictMode double-mount safety
+- Corrupt localStorage recovery
+- Browser quota risks
+
+7. Smart embed/security audit
+- YouTube parsing
+- Vimeo parsing
+- SoundCloud parsing
+- Spotify parsing
+- CodePen parsing
+- Direct video link detection
+- Direct image link detection
+- Normal web links
+- Unsafe protocol blocking:
+  - javascript:
+  - data:
+  - file:
+  - mailto:
+  - vbscript:
+  - ftp:
+- Import sanitization
+- Backup sanitization
+- iframe sandboxing
+- iframe pointer-events / interact mode
+- External links open in browser
+- Electron does not navigate away internally
+
+8. Electron security audit
+- contextIsolation true
+- sandbox true
+- nodeIntegration false
+- preload bridge surface
+- IPC sender scoping
+- IPC argument sanitization
+- setIgnoreMouseEvents safety
+- close/minimize IPC safety
+- desktop mode IPC safety
+- tray IPC safety
+- will-navigate blocking
+- setWindowOpenHandler behavior
+- no Node primitives leaked to renderer
+- no remote module
+- no unsafe eval
+- app.requestSingleInstanceLock status
+
+9. PWA/web audit
+- Web/PWA works normally.
+- Electron-only controls hidden on web.
+- Web-only fullscreen exists if intended.
+- Service worker does not break dev.
+- Service worker does not run under file:// Electron.
+- Manifest valid.
+- Icons valid.
+- Installability.
+- Offline shell caching.
+- Cache cleanup scoped safely.
+- PWA paths work if deployed at root.
+- Note any subpath deploy limitation.
+
+10. Build/release audit
+Run and report:
+- npm run build:web
+- node --check electron/main.cjs
+- node --check electron/preload.cjs
+
+Also inspect:
+- package.json scripts
+- electron-builder config
+- Windows installer output path
+- build:desktop
+- build:desktop:dir
+- dev:web / dev:renderer / dev:desktop ports
+- Replit limitation docs
+- npm audit output, but do not fix
+- bundle size
+- missing assets
+- missing icon files
+- tray icon files
+- release docs accuracy
+
+11. Performance audit
+- Bundle size
+- Unused imports
+- Unnecessary deps
+- Heavy re-renders
+- Mousemove click-through hook IPC spam risk
+- Toolbar state complexity
+- Object URL memory leaks
+- Large video backup risks
+- localStorage size risks
+- IndexedDB quota risks
+- Drag/resize performance
+- Embed iframe performance
+
+12. Accessibility audit
+- Keyboard shortcuts
+- Esc behavior
+- Button aria-labels
+- Icon-only buttons
+- Dialog focus
+- Toolbar keyboard access
+- Color contrast
+- Note editing usability
+- Focus traps
+- Screen reader issues
+
+13. Docs/repo audit
+- README.md
+- BUILDATHON_SUBMISSION.md
+- docs/SCREENSHOTS.md
+- docs/DEMO_SCRIPT.md
+- docs/RELEASE.md if present
+- AGENTS.md
+- PRODUCT.md
+- ROADMAP.md
+- LICENSE
+- .gitignore
+- Any fake/outdated claims
+- Any commands that do not match package.json
+- Any missing submission links/placeholders
+
+14. Buildathon readiness audit
+- Can I demo this in 60 seconds?
+- What are the 5 strongest demo moments?
+- What can fail live?
+- What should I avoid showing?
+- What exact Windows test should I run before recording?
+- What exact final pitch should I use?
+
+Output format:
+
+A. Executive verdict
+PASS / PASS WITH WARNINGS / FAIL
+
+B. Top 15 risks ranked
+For each:
+- severity: HIGH / MEDIUM / LOW
+- area
+- exact file(s)
+- why it matters
+- whether it blocks buildathon demo
+- recommended fix
+- fix before submission or after submission
+
+C. Full checklist by category
+Use ✅ / ⚠️ / ❌
+
+D. Commands run and results
+
+E. Files reviewed
+
+F. Do-not-touch list before submission
+
+G. Safe fixes worth doing now
+Only list fixes that are low-risk and do not touch Electron overlay/click-through/storage/backup.
+
+H. Fixes to avoid before submission
+
+I. Final recommendation:
+- keep coding
+- docs/demo only
+- submit now
+
+Important:
+If you find HIGH severity issues, do not fix them yet. Report first.
+If you find only LOW polish issues, say we should stop coding and submit.
