@@ -108,12 +108,20 @@ function Toolbar({
   const [moreOpen, setMoreOpen] = useState(false)
   const moreBtnRef = useRef(null)
   const morePanelRef = useRef(null)
-  // Compact toolbar = Electron Desktop Mode OR narrow viewport (<1500px).
-  // Without the viewport check the full pill row wraps to 2-3 rows on
-  // common laptop widths (1280×720 / 1366×768) and the "floating pill"
-  // becomes a heavy dashboard brick. The same More popover that handles
-  // Desktop Mode handles narrow web — single source of truth, identical
-  // behavior. The resize listener keeps it live as the user resizes.
+  // Compact toolbar:
+  //   - In Electron (any window state): ALWAYS compact. The frameless
+  //     transparent overlay is meant to feel like a quiet desktop layer,
+  //     not a wide dashboard brick. Even when the underlying display is
+  //     1920px+ wide, an Electron window the user has resized down can
+  //     end up with a multi-row toolbar; gating compact on isElectron
+  //     guarantees a single clean row at any width and forces every
+  //     advanced action (Tidy / Export / Backup / Import / Display /
+  //     Snap / Board / Focus / Theme / Accent / Shortcuts / Clear /
+  //     Fullscreen) into the More popover. The wordmark hides
+  //     automatically (already gated on !compact below).
+  //   - On the web/PWA build: compact only on narrow viewports
+  //     (<1500px) so widescreen browsers keep the full inline pill row.
+  // The resize listener keeps the web case live as the user resizes.
   const COMPACT_BREAKPOINT_PX = 1500
   const [viewportW, setViewportW] = useState(
     typeof window !== 'undefined' ? window.innerWidth : 1920
@@ -124,7 +132,7 @@ function Toolbar({
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  const compact = desktopMode || viewportW < COMPACT_BREAKPOINT_PX
+  const compact = isElectron || desktopMode || viewportW < COMPACT_BREAKPOINT_PX
   // Auto-close the More popover whenever we leave compact mode (e.g.
   // user clicks Exit Desktop), and install a global click-outside +
   // Escape listener while open. The popover itself stops propagation.
