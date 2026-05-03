@@ -1,0 +1,296 @@
+Polish the MuralDesk GitHub repository for buildathon submission.
+
+DOCS / REPO POLISH ONLY.
+
+Do not modify app code.
+Do not modify package.json.
+Do not install packages.
+Do not refactor.
+Do not touch Electron overlay logic.
+Do not touch click-through logic.
+Do not touch storage/persistence.
+Do not touch backup/export logic.
+Do not touch service worker.
+Do not touch build config unless only documenting it.
+
+Goal:
+Make the GitHub repo look professional, polished, accurate, and submission-ready.
+
+Update or create only documentation / repo presentation files:
+- README.md
+- BUILDATHON_SUBMISSION.md
+- docs/DEMO_SCRIPT.md
+- docs/SCREENSHOTS.md
+- docs/RELEASE.md if missing
+- ROADMAP.md if missing or outdated
+- PRODUCT.md if missing or outdated
+- AGENTS.md only if it is outdated
+- Do not touch source code.
+
+Use current product truth:
+
+MuralDesk is a local-first desktop mural layer for pinning images, videos, smart embeds, links, and notes over your workspace.
+
+Current features:
+- Electron desktop app
+- Transparent frameless overlay
+- Click-through empty areas
+- Full-display Desktop Mode
+- Current-display and all-display overlay modes
+- Move window to any monitor, then expand over that display
+- Drag/resize/lock/duplicate/delete cards
+- Hover-only item controls
+- Compact toolbar with More menu
+- Tidy board action
+- Focus mode if present
+- Snap / board opacity / theme / accent controls if present
+- Local images and videos
+- Notes
+- Normal web links
+- Smart embeds:
+  - YouTube
+  - Vimeo
+  - SoundCloud
+  - Spotify
+  - CodePen
+  - direct video URLs
+  - direct image URLs
+- YouTube/embed Interact mode
+- Export/import
+- Portable backup if implemented
+- Local-first storage:
+  - localStorage for layout/metadata
+  - IndexedDB for uploaded media blobs
+- PWA/web version
+- Vastago brand font loaded locally
+- No login
+- No backend
+- No cloud storage
+
+Important honest limitations:
+- Not a full wallpaper engine yet.
+- Not true OS wallpaper-layer integration yet.
+- Multi-monitor support exists as current-display/all-display overlay, but not separate independent boards per monitor yet.
+- Windows app is unsigned, so SmartScreen may warn.
+- Electron desktop mode must be tested on a real desktop OS, not Replit.
+- Replit cannot launch Electron because its container lacks GUI/GTK/Chromium system libraries.
+
+README.md requirements:
+1. Make it look premium and easy to scan.
+2. Strong hero section at top.
+3. Use existing hero image if present:
+   docs/assets/muraldesk-hero.png
+4. Do not reference missing screenshot paths.
+5. Use a short tagline:
+   “A local-first visual mural layer for your desktop.”
+6. Use minimal badges only:
+   Electron, React, Vite, MIT, Local-first if desired.
+7. Add quick navigation links:
+   Features · Desktop Mode · Smart Embeds · Install · Demo · Roadmap
+8. Add “What is MuralDesk?”
+9. Add “Why it exists”
+10. Add “Core features” grouped cleanly:
+   - Desktop overlay
+   - Mural objects
+   - Smart embeds
+   - Local-first storage
+   - Backup/export
+11. Add clear “Desktop Mode” section:
+   - Transparent overlay
+   - Click-through empty areas
+   - Full-display current monitor
+   - All-display mode
+   - Toolbar hides until needed
+12. Add “Multi-monitor support” section with this accurate wording:
+   - Move MuralDesk to any monitor
+   - Cover the current monitor
+   - Span all displays as one big mural canvas
+   - Separate independent boards per monitor are not available yet
+13. Add “Smart link behavior” table:
+   - YouTube → embedded player
+   - Vimeo → embedded player
+   - SoundCloud → embedded widget
+   - Spotify → embedded widget
+   - CodePen → embedded pen
+   - Direct image URL → image card
+   - Direct video URL → video card
+   - Normal website → web link card
+   - Unsafe URL → blocked
+14. Add “Local-first storage” section:
+   - No account
+   - No backend
+   - No cloud sync
+   - layout in localStorage
+   - media blobs in IndexedDB
+15. Add “Tech stack”
+16. Add “Run locally” section:
+   Web:
+   npm install
+   npm run dev:web
+
+   Desktop:
+   npm install
+   npm run dev:desktop
+
+17. Add “Build Windows app” section:
+   npm run build:desktop
+
+   Expected output:
+   release/MuralDesk-Setup-0.1.0.exe
+   release/win-unpacked/MuralDesk.exe
+
+18. Add Replit limitation note:
+   Replit can run the web/PWA preview but cannot launch Electron desktop because the container lacks GUI/GTK/Chromium libraries.
+
+19. Add “Demo flow” section:
+   - Open MuralDesk
+   - Click Sample
+   - Tidy board
+   - Drag/resize cards
+   - Add smart embed
+   - Enter Desktop Mode with Ctrl/Cmd + Shift + D
+   - Show click-through empty area
+   - Export/backup
+
+20. Add “Current limitations” section.
+21. Add “Roadmap” section.
+22. Add license:
+   Released under the MIT License — see LICENSE.
+
+README style:
+- Professional, clean, not too long.
+- Short paragraphs.
+- Use tables only when useful.
+- Use bullets for scanability.
+- Do not overuse emojis.
+- No fake claims.
+- No broken image references.
+- No “coming soon” promises that sound already built.
+
+BUILDATHON_SUBMISSION.md requirements:
+- Make it final and submission-ready.
+- Include:
+  - Project name
+  - Tagline
+  - Short description
+  - Problem
+  - Solution
+  - Key features
+  - Technical stack
+  - What makes it innovative
+  - What was built
+  - Demo script
+  - Known limitations
+  - Roadmap
+  - Links section
+- Remove placeholder rows that do not have real URLs.
+- If a URL is unknown, omit the row instead of writing placeholder text.
+- Use accurate shortcut:
+  Ctrl/Cmd + Shift + D = Desktop Mode overlay.
+- Do not say Ctrl/Cmd + Shift + F for Desktop Mode.
+- Use current bundle size wording around ~80 KB gzipped if mentioned.
+- Mention all smart embeds:
+  YouTube, Vimeo, SoundCloud, Spotify, CodePen, direct video, direct image, normal web links.
+- Do not claim full wallpaper-engine support.
+- Do not claim separate independent per-monitor boards.
+
+docs/DEMO_SCRIPT.md requirements:
+- Make it polished and practical.
+- Include a 60-second script with:
+  - timestamp
+  - voiceover
+  - on-screen action
+  - caption text
+- Demo flow should show:
+  - transparent overlay
+  - sample board
+  - tidy
+  - drag/resize
+  - smart embed interact mode
+  - Desktop Mode Ctrl/Cmd + Shift + D
+  - click-through empty area
+  - backup/export
+- Include a 30-second emergency short version.
+
+docs/SCREENSHOTS.md requirements:
+- Make screenshot checklist professional.
+- Include suggested filenames and captions.
+- Include:
+  - hero desktop overlay
+  - sample board
+  - hover controls
+  - smart embeds
+  - Desktop Mode
+  - click-through
+  - backup/export
+  - Windows installer/app screenshot
+- Include “what not to show”:
+  - broken images
+  - cluttered toolbar
+  - placeholder docs
+  - fake multi-monitor claims
+  - unsigned SmartScreen warning unless explaining it
+
+docs/RELEASE.md:
+Create if missing.
+Include:
+- How to run web
+- How to run desktop
+- How to build Windows installer
+- Output paths
+- How to test the installer
+- SmartScreen warning explanation
+- Replit Electron limitation
+- Release checklist
+- GitHub release steps
+- Troubleshooting
+
+ROADMAP.md:
+Create or update.
+Use professional roadmap:
+- Per-monitor overlay windows / independent boards
+- Snap guides and layout tools
+- More board organization
+- Startup options / tray polish
+- More embed types
+- Template boards
+- Wallpaper-layer experiments, Windows-first
+- Optional sync/sharing later, but make clear current app is local-first
+
+PRODUCT.md:
+Create or update.
+Include:
+- Product vision
+- Target users
+- Use cases:
+  - developers
+  - designers
+  - researchers
+  - streamers
+  - students
+  - moodboards/reference boards
+- Core value proposition
+- Differentiators
+- MVP scope
+- Current limitations
+
+AGENTS.md:
+Only update if outdated.
+Make sure it says:
+- Preserve Electron overlay behavior
+- Preserve click-through behavior
+- Preserve localStorage/IndexedDB persistence
+- Preserve backup/export behavior
+- Preserve web/PWA behavior
+- No backend/login/cloud unless explicitly requested
+- No broad refactors
+- Small surgical changes only
+
+Final verification:
+- Check README has no broken screenshot paths.
+- Check BUILDATHON_SUBMISSION.md has no placeholder text.
+- Check shortcuts are accurate.
+- Check package scripts in README match package.json.
+- Check no app code was changed.
+- Report exact files changed.
+- Do not run builds unless needed, because this is docs-only.

@@ -1,85 +1,43 @@
 # MuralDesk Agent Rules
 
-You are helping build MuralDesk, a desktop visual pinboard app.
+You are helping build MuralDesk, a local-first desktop visual mural layer.
 
 ## Product Vision
 
-MuralDesk lets users place images, videos, GIFs, links, and text notes on their desktop/workspace like sticky notes, but for rich media.
+MuralDesk lets users place images, videos, smart embeds, links, and notes onto a transparent overlay that floats over their real desktop — and as a PWA in the browser. It's a quiet, ambient visual layer for references and inspiration, not a generic notes app, not a wallpaper engine, not a bookmark manager.
 
-The app is not a generic notes app.
-The app is not a wallpaper app.
-The app is not a browser bookmark manager.
+## Hard preservation rules
 
-It is a visual desktop board for media, references, inspiration, and ambient looping content.
+The following behaviors are load-bearing. Do not change them without an explicit, scoped request that names the file:
 
-## Buildathon Rules
+- **Electron transparent overlay** behavior (`electron/main.cjs`, `electron/preload.cjs`) — `transparent: true`, frameless, no-shadow, secure preload bridge with `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`, `webSecurity: true`. Tray + hide-to-tray + before-quit / will-quit logic.
+- **Click-through behavior** (`src/hooks/useElectronClickThrough.js`) — renderer hit-test that flips `setIgnoreMouseEvents` per cursor position. Cards interactive; empty space passes mouse events to the OS.
+- **Desktop Mode** (`src/hooks/useDesktopMode.js` + the IPC it talks to) — current-display and all-displays overlay modes; persisted to `localStorage`; replayed on launch.
+- **Local-first persistence** — `localStorage` for layout (`muraldesk-board`), IndexedDB for media blobs (`muraldesk` / `media`). Hydration token + cancellation logic in `useBoard.js`.
+- **Backup / export / import** (`src/lib/backup.js`) — `.muraldesk.json` portable format with embedded base64 media, layout-only Export, auto-detecting Import, link-URL re-sanitization on restore.
+- **Link safety contract** (`src/lib/linkType.js` + `LinkCard.jsx`) — `http(s)` only, per-provider host allow-lists, strict ID/slug regex per embed provider. Unsafe protocols stripped on paste *and* on import.
+- **PWA layer** (`public/manifest.webmanifest`, `public/sw.js`) — app-shell precache; the service worker must never intercept `blob:` / `data:` URLs (IndexedDB-backed object URLs must keep working).
+- **Web/PWA build behavior** — the same board must continue to run cleanly in a normal browser tab without an Electron bridge.
 
-This is a 24-hour MVP build. Prioritize working features over complex architecture.
+## Non-negotiables
 
-Do not overbuild.
-Do not add authentication.
-Do not add backend unless absolutely required.
-Do not add payments.
-Do not add social features.
-Do not redesign the whole app without permission.
+- **No backend, no login, no cloud sync** unless the user *explicitly* asks for it. Local-first is the product.
+- **No telemetry / analytics / phone-home** of any kind.
+- **No broad refactors.** Make small, surgical changes.
+- **Do not touch `package.json`** unless the user explicitly asks for a dependency change. Don't bump majors casually.
+- **Do not redesign the whole app** without permission.
 
-## MVP Features
+## Code rules
 
-Must have:
-
-- Add image
-- Add video
-- Add text note
-- Add link/embed if possible
-- Move items
-- Resize items
-- Delete items
-- Save layout locally
-- Restore layout on reopen
-- Loop video playback
-- Clean desktop-like canvas UI
-
-Nice to have:
-
-- Multi-monitor awareness
-- Lock/unlock layout
-- Opacity controls
-- Always-on-bottom behavior
-- Export/import layout
-- Simple themes
-
-## UX Rules
-
-The app should feel like:
-
-- Desktop-first
-- Clean
-- Minimal
-- Fast
-- Visual
-- Not cluttered
-
-Avoid:
-
-- Mobile-first layouts
-- Complex dashboards
-- Too many settings
-- Heavy onboarding
-- Fake features
-
-## Code Rules
-
-Make small, surgical changes.
-Do not refactor unrelated files.
-Keep components simple.
-Use clear names.
-Avoid unnecessary dependencies.
-Do not break working features to improve style.
+- Small, scoped edits. Don't refactor unrelated files.
+- Keep components simple; avoid unnecessary dependencies.
+- Don't break working features to improve style.
+- Honor existing patterns (custom hooks, hover-only mini-toolbars, theme tokens).
 
 ## Priority
 
-1. Working desktop app
-2. Add/move/resize media
-3. Save/restore board
-4. Clean UI
-5. Buildathon demo polish
+1. Working desktop overlay + click-through.
+2. Local-first persistence (don't break it).
+3. Smart embeds + safe link handling.
+4. Clean, ambient UI.
+5. Buildathon-ready demo polish.

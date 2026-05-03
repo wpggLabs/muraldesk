@@ -1,149 +1,60 @@
-# MuralDesk — 60-Second Demo Script
+# MuralDesk — Demo Script
 
-A tight, judge-friendly walkthrough. Built for a single uncut screen-record at **1280 × 720** with voiceover. Total runtime **60 seconds**.
+Two cuts: a polished **60-second** main demo, and a **30-second** emergency short.
 
-**Tone:** fast, clear, confident. No filler words ("so", "basically", "kind of"). Short sentences. Each beat earns its seconds.
+Both assume:
 
-**Pace target:** ~150 words of voiceover total. If you're over 160, cut adjectives.
-
-**Pre-flight checklist** (do all of these before pressing record):
-
-- Wallpaper set to a visually distinctive image (gradient or photo) so transparency reads.
-- A file-manager window open *behind* MuralDesk for the click-through beat.
-- Sample mural ready to go — have `✨ Sample` clicked, then `▦ Tidy` once, then `🗑 Clear` so the board is blank but warmed up.
-- One YouTube *or* Vimeo URL on your clipboard, plus one Spotify *or* SoundCloud URL on a second clipboard slot if your tooling allows.
-- System notifications muted. Browser tabs closed. Slack quit. Clock generic.
-- Cursor highlighter on (Mouseposé / Cursor Highlighter / OBS click-effect) — the demo lives or dies on whether judges can see what you click.
+- You are recording on a real desktop OS (Windows, macOS, or Linux), **not** Replit.
+- A few normal apps (browser, editor, file manager) are open behind MuralDesk so click-through is visible.
+- MuralDesk is launched fresh, board is empty.
 
 ---
 
-## Timeline
+## Main demo — 60 seconds
 
-### 0:00 – 0:05 · The problem
+| Time | On-screen action | Voiceover | Caption |
+|---|---|---|---|
+| **0:00 – 0:05** | Cold launch. Show the empty MuralDesk window floating over a normal desktop. Move it slightly so the windows behind are visible. | "MuralDesk is a local-first visual mural layer for your desktop." | `MuralDesk · local-first mural for your desktop` |
+| **0:05 – 0:10** | Click **✨ Sample** in the toolbar. Sample mural fills in: images, a looping video, a YouTube embed, notes, web links. | "One click loads a sample board so you can see what a mural feels like." | `✨ Sample board` |
+| **0:10 – 0:15** | Click **▦ Tidy**. The board shelf-packs into a clean grid inside the viewport. | "Tidy shelf-packs everything into a clean grid — instantly." | `▦ Tidy` |
+| **0:15 – 0:22** | Drag a card to a new spot. Resize another from a corner. Hover one and slide its opacity down to ~40%. | "Cards drag, resize, and fade to whatever ambience you want." | `Drag · Resize · Opacity` |
+| **0:22 – 0:32** | Paste a YouTube URL into the Add-Link input. It auto-becomes an embedded player. Click **Interact** on the embed and let a second of audio play, then toggle Interact off. | "Paste a YouTube, Vimeo, SoundCloud, Spotify, or CodePen URL — MuralDesk picks the right embed automatically. Interact mode keeps it ambient until you actually want to use it." | `Smart embeds · Interact mode` |
+| **0:32 – 0:42** | Press `Ctrl/Cmd + Shift + D`. Window expands to cover the entire current display, transparent and frameless. Move the cursor over an empty area and click on a window behind it to prove click-through. | "Desktop Mode expands the overlay over your whole display. Empty space passes clicks straight through to the apps underneath." | `Ctrl/Cmd + Shift + D · Desktop Mode` |
+| **0:42 – 0:48** | Move cursor to the very top of the screen — the toolbar slides down. Open the **Display** toggle and switch to **All** so the overlay spans every monitor. Switch back to **Current**. | "Cover one display, or span them all." | `Multi-monitor · Current / All` |
+| **0:48 – 0:53** | Press `Ctrl/Cmd + Shift + D` to exit Desktop Mode. Window returns to its previous size and position. | "Toggle off and you're back to a normal window." | `Toggle off` |
+| **0:53 – 0:58** | Click **📦 Backup**. A `.muraldesk.json` file downloads. Briefly show it in a file manager — single file, no folders. | "Backup writes one portable file — layout plus media, no cloud, no account." | `📦 Backup · single file · local-first` |
+| **0:58 – 1:00** | Refresh / relaunch the app. The mural reappears identically. | "Everything stays on your machine." | `Local-first` |
 
-| Track | Content |
-|---|---|
-| **Voiceover** | "Visual references end up scattered — browser tabs, screenshot folders, second monitors parked on Pinterest." |
-| **On-screen action** | Quick montage: chaotic browser tab strip · Downloads folder full of `Screenshot 2026-04-…` files · second monitor with Pinterest. ~1.5 s each. |
-| **Caption (lower-third)** | **The references are everywhere — except where you're working.** |
-
-> *Cut hard at 0:05 — the next beat must hit immediately.*
-
----
-
-### 0:05 – 0:12 · The transparent overlay
-
-| Track | Content |
-|---|---|
-| **Voiceover** | "MuralDesk gives you one quiet wall — pinned next to your work, not on top of it. The window itself is transparent." |
-| **On-screen action** | Cut to the desktop. MuralDesk is open, board empty — only the toolbar pill is visible at the top. Slowly drag a finder/explorer window *behind* the area where MuralDesk lives, so judges see the wallpaper and the other window straight through. |
-| **Caption** | **A transparent overlay. Only your cards are drawn.** |
+**Duration:** ~60 seconds. Adjust pacing per cut.
 
 ---
 
-### 0:12 – 0:22 · Sample board → mixed media
+## Emergency short — 30 seconds
 
-| Track | Content |
-|---|---|
-| **Voiceover** | "One click loads a sample board — images, looping video, sticky notes, smart links, and embeds. All on one transparent canvas." |
-| **On-screen action** | Click `✨ Sample`. Cards fly in. Click `▦ Tidy` — they snap to a clean grid. Pan the cursor across the board so each card type is briefly highlighted. |
-| **Caption** | **Images · video · notes · links · embeds.** |
+For when there's no time for the full cut.
 
----
-
-### 0:22 – 0:32 · Drag, resize, hover controls
-
-| Track | Content |
-|---|---|
-| **Voiceover** | "Every card drags, resizes, and hovers a mini-toolbar — opacity, fit, lock, duplicate, delete. No settings panel. Double-click for focus." |
-| **On-screen action** | Pick up an image card and drag it. Resize from a corner. Hover to reveal the mini-toolbar — slide opacity down to ~40% so the change is visible. Double-click → Focus mode (centered, enlarged, dimmed backdrop). `Esc` to exit. |
-| **Caption** | **Hover any card. Everything's there.** |
+| Time | On-screen action | Voiceover |
+|---|---|---|
+| **0:00 – 0:04** | Cold launch over a normal desktop. Click **✨ Sample**. Mural fills in. | "MuralDesk — a local-first mural layer for your desktop." |
+| **0:04 – 0:10** | Drag a card. Resize another. Drop opacity on a third. | "Drag, resize, fade." |
+| **0:10 – 0:16** | Paste a YouTube URL — auto-embeds. Toggle **Interact** briefly. | "Paste any YouTube, Vimeo, Spotify, or CodePen link — it picks the right embed." |
+| **0:16 – 0:24** | `Ctrl/Cmd + Shift + D` → Desktop Mode. Click empty space to show click-through. | "Desktop Mode covers your screen. Empty space clicks through to whatever's behind." |
+| **0:24 – 0:30** | Click **📦 Backup**. File downloads. Refresh. Mural persists. | "Backup is one portable file. Everything stays on your machine." |
 
 ---
 
-### 0:32 – 0:42 · Smart embeds + Interact mode
+## Recording tips
 
-| Track | Content |
-|---|---|
-| **Voiceover** | "Paste a YouTube, Vimeo, Spotify, SoundCloud, or CodePen URL — MuralDesk classifies it and renders the right embed. Toggle Interact and the native player works." |
-| **On-screen action** | Open Add Link, paste a YouTube URL → it appears as an embedded player card. Click `Interact` on the card chrome → the YouTube controls activate, scrub the timeline once. (Optional, time permitting: paste a Spotify URL on a second card so two embed types are visible together.) |
-| **Caption** | **Smart embeds. One input. Right card, every time.** |
+- Record at the display's native resolution. Don't upscale.
+- Hide notification banners and DND any chat apps before you start.
+- Move the mouse deliberately — fast cursor jumps make screen recordings hard to follow.
+- For Desktop Mode, make sure there's clearly visible content behind the overlay so click-through is unambiguous.
+- If audio is enabled on an embed, play it for **less than two seconds** — long enough to prove it works, short enough not to fight the voiceover.
+- Trim the very first frame (cursor entering the toolbar) and the very last frame (cursor leaving) — they always look messy.
 
----
+## What not to do on camera
 
-### 0:42 – 0:50 · Desktop Mode + click-through
-
-| Track | Content |
-|---|---|
-| **Voiceover** | "Press Ctrl-Shift-D for Desktop Mode — the mural takes over the whole display. Empty space clicks straight through to the apps underneath." |
-| **On-screen action** | Press `Ctrl/Cmd + Shift + D`. Toolbar tucks away. The mural now covers the whole screen with no window frame. Move the cursor over an empty region → click a button on the file-manager window *behind* MuralDesk → that button visibly responds (folder opens, etc.). Cards stay fully interactive. |
-| **Caption** | **Cards stay clickable. Empty space clicks through.** |
-
----
-
-### 0:50 – 0:56 · Local-first + Backup
-
-| Track | Content |
-|---|---|
-| **Voiceover** | "No account, no cloud, no telemetry. One click backs everything up — layout and media — into a single portable file." |
-| **On-screen action** | Click `📦 Backup`. File-save dialog flashes briefly. Cut to a file-manager view of `muraldesk-backup-…json` sitting on disk. (Optional: drag it onto another machine's MuralDesk window and `↥ Import` — the same board reappears. Only include if you can do it in <3 s.) |
-| **Caption** | **Local-first. One file. Yours.** |
-
----
-
-### 0:56 – 1:00 · Tagline
-
-| Track | Content |
-|---|---|
-| **Voiceover** | "MuralDesk — your desktop, as a mural." |
-| **On-screen action** | Cut to a clean hero frame: the sample mural fully arranged on the transparent overlay, MuralDesk wordmark fading in. Hold for the full 4 s. |
-| **Caption (final card)** | **MuralDesk turns your desktop into a local-first visual mural layer where images, videos, links, and notes can live freely — without becoming another messy app window.** |
-
----
-
-## Voiceover (clean read, copy-paste ready)
-
-> Visual references end up scattered — browser tabs, screenshot folders, second monitors parked on Pinterest.
->
-> MuralDesk gives you one quiet wall — pinned next to your work, not on top of it. The window itself is transparent.
->
-> One click loads a sample board — images, looping video, sticky notes, smart links, and embeds. All on one transparent canvas.
->
-> Every card drags, resizes, and hovers a mini-toolbar — opacity, fit, lock, duplicate, delete. No settings panel. Double-click for focus.
->
-> Paste a YouTube, Vimeo, Spotify, SoundCloud, or CodePen URL — MuralDesk classifies it and renders the right embed. Toggle Interact and the native player works.
->
-> Press Ctrl-Shift-D for Desktop Mode — the mural takes over the whole display. Empty space clicks straight through to the apps underneath.
->
-> No account, no cloud, no telemetry. One click backs everything up — layout and media — into a single portable file.
->
-> MuralDesk — your desktop, as a mural.
-
-**Total word count: ~145 words.** At ~150 wpm that lands at ~58 s spoken, leaving ~2 s of breathing room across the cuts. If your VO talent reads faster, stretch the hero hold at the end; if slower, drop the optional Spotify card in beat 5 and the optional Import in beat 7.
-
----
-
-## Captions (subtitle file, one per beat)
-
-```
-00:00 — The references are everywhere — except where you're working.
-00:05 — A transparent overlay. Only your cards are drawn.
-00:12 — Images · video · notes · links · embeds.
-00:22 — Hover any card. Everything's there.
-00:32 — Smart embeds. One input. Right card, every time.
-00:42 — Cards stay clickable. Empty space clicks through.
-00:50 — Local-first. One file. Yours.
-00:56 — MuralDesk turns your desktop into a local-first visual mural layer
-        where images, videos, links, and notes can live freely —
-        without becoming another messy app window.
-```
-
----
-
-## Recording notes
-
-- **Single take if possible.** Cut between beats only if you fluff a line — judges read out-of-rhythm cuts as "this didn't work in one go".
-- **Cursor first, click second.** Park the cursor on the target for ~200 ms before clicking, so judges see *what* you clicked.
-- **No keyboard shortcuts the viewer can't see.** When you press `Ctrl + Shift + D`, the on-screen result must be unmistakable (toolbar tucks, screen fills) — otherwise add a key-press overlay (Carnac on Windows, KeyCastr on macOS).
-- **Audio.** VO at -16 LUFS, no music under it. If you want a bed, drop something ambient at -28 LUFS — never melodic enough to compete with the words.
-- **Export.** 1280 × 720, H.264, ~6 Mbps, 30 fps. MP4 container. Under 30 MB total — most submission platforms cap there.
+- Don't show the SmartScreen "Windows protected your PC" dialog without explaining it (or skip the install step entirely).
+- Don't paste a personal URL with a session token in the query string.
+- Don't claim per-monitor independent boards — that's roadmap, not shipped.
+- Don't claim wallpaper-layer integration — MuralDesk is a transparent overlay, not an OS shell layer.
