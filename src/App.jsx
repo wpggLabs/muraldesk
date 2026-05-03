@@ -62,6 +62,23 @@ export default function App() {
   // the modal is open).
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
+  // Single-card Focus mode. Double-clicking a card sets this to its id;
+  // BoardItem then renders a centered, enlarged overlay copy of the
+  // card's content. ALL of this is transient React state — we never
+  // mutate `item.x / y / width / height` and never write to localStorage,
+  // so refreshing the page after focusing always restores the original
+  // size and position. Esc and clicking the backdrop both clear it.
+  const [focusedItemId, setFocusedItemId] = useState(null)
+  // Auto-clear focus if the focused item is removed from the board
+  // (e.g. via the delete key or the trash icon). Without this the
+  // overlay would render against a stale id and just disappear at
+  // next render — clearing eagerly keeps state honest.
+  useEffect(() => {
+    if (focusedItemId && !items.some((it) => it.id === focusedItemId)) {
+      setFocusedItemId(null)
+    }
+  }, [focusedItemId, items])
+
   // Desktop Canvas Mode + unified fullscreen control. On web this hook
   // wraps the document Fullscreen API; in Electron it talks to the main
   // process via the preload bridge so the OS-level window goes fullscreen
@@ -543,6 +560,13 @@ export default function App() {
         return
       }
       if (e.key === 'Escape') {
+        // Esc priority order: close Focus mode first (most-recent
+        // transient mode wins), then exit Desktop Mode, then deselect.
+        // Each step returns so a single Esc only collapses one layer.
+        if (focusedItemId) {
+          setFocusedItemId(null)
+          return
+        }
         if (desktopMode) setDesktopMode(false)
         setSelectedId(null)
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
@@ -555,7 +579,7 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKey)
   }, [
     selectedId, removeItem, desktopMode, setDesktopMode, toggleFullscreen,
-    isElectron, toggleDesktopMode, handleAddNoteCentered,
+    isElectron, toggleDesktopMode, handleAddNoteCentered, focusedItemId,
   ])
 
   // Click on empty canvas deselects.
@@ -639,6 +663,10 @@ export default function App() {
           snap={snap}
           snapGrid={snapGrid}
           boardOpacity={boardOpacity}
+          focused={focusedItemId === item.id}
+          onRequestFocus={() => setFocusedItemId(item.id)}
+          onExitFocus={() => setFocusedItemId(null)}
+          isElectron={isElectron}
         />
       ))}
 
