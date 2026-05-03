@@ -5,6 +5,34 @@
 }
 
 /*
+  Vastago Grotesk — MuralDesk's brand typeface. Loaded locally from
+  public/fonts/ so the same files serve both the web/PWA build (via
+  Vite's static asset pipeline → /fonts/...) and the Electron build
+  (which loads the same dist/ over file://). No external font CDN —
+  fonts work offline, no network round-trip on first paint, and the
+  Electron overlay never has to reach out to fonts.googleapis.com.
+
+  font-display: swap → first paint uses the system fallback stack
+  immediately; Vastago swaps in once the .otf decodes (typically one
+  frame). This avoids a flash of invisible text and keeps the toolbar
+  visible during cold start.
+*/
+@font-face {
+  font-family: 'VastagoRegular';
+  src: url('/fonts/vastago-grotesk-regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'VastagoBlack';
+  src: url('/fonts/vastago-grotesk-black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
   Theme tokens.
 
   The `:root` defaults below match the dark / purple look exactly as it
@@ -125,7 +153,7 @@ html, body, #root {
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'VastagoRegular', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 14px;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   -webkit-font-smoothing: antialiased;

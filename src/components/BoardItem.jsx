@@ -364,6 +364,11 @@ export default function BoardItem({
             display: 'flex',
             gap: 1,
             padding: 2,
+            // Outrank corner resize handles (zIndex 25, see comment at
+            // L185). Without this the top-right resize handle sits on
+            // top of the rightmost mini-toolbar buttons (delete / fit)
+            // and silently steals their clicks during demos.
+            zIndex: 30,
             background: 'var(--surface-glass-strong)',
             border: '1px solid var(--border)',
             borderRadius: 9,

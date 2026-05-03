@@ -15,9 +15,12 @@ Pin images, videos, links, and notes onto a transparent overlay that floats over
 
 <br />
 
-<!-- Drop a hero screenshot or short loop here. Suggested: 1600×900 PNG or
-     a 6–10s GIF showing the overlay floating over a real desktop. -->
-<img src="docs/screenshots/hero.png" alt="MuralDesk floating over a real desktop" width="820" />
+<!-- Branded hero. Generated artwork at docs/assets/muraldesk-hero.png —
+     dark premium background with the MuralDesk wordmark and a trio of
+     floating cards that hint at the mural feel. Swap for a real
+     screenshot at docs/screenshots/hero.png whenever a polished one
+     exists. -->
+<img src="docs/assets/muraldesk-hero.png" alt="MuralDesk — local-first visual mural layer for your desktop" width="820" />
 
 <br /><br />
 
