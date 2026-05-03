@@ -70,5 +70,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "MuralDesk"
     }
-  }
+  },
+  "author": "wpggLabs",
+  "description": "A desktop canvas for pinning images, videos, links, and notes behind your work."
 }
