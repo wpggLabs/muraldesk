@@ -17,9 +17,7 @@ Pin images, videos, links, and notes onto a transparent overlay that floats over
 
 <!-- Branded hero. Generated artwork at docs/assets/muraldesk-hero.png —
      dark premium background with the MuralDesk wordmark and a trio of
-     floating cards that hint at the mural feel. Swap for a real
-     screenshot at docs/screenshots/hero.png whenever a polished one
-     exists. -->
+     floating cards that hint at the mural feel. -->
 <img src="docs/assets/muraldesk-hero.png" alt="MuralDesk — local-first visual mural layer for your desktop" width="820" />
 
 <br /><br />
@@ -41,19 +39,6 @@ Pin images, videos, links, and notes onto a transparent overlay that floats over
 MuralDesk is a desktop visual board. You drop **images, videos, sticky notes, and links** onto a transparent canvas that floats over your real desktop. Cards stay fully interactive — drag, resize, hover controls — while empty space clicks straight through to whatever's underneath.
 
 It also runs as a clean **Progressive Web App** in any modern browser. Same board, same shortcuts, same files.
-
-<table>
-  <tr>
-    <td align="center">
-      <img src="docs/screenshots/web.png" alt="Web build" width="380" /><br />
-      <sub><b>Web / PWA</b></sub>
-    </td>
-    <td align="center">
-      <img src="docs/screenshots/desktop-mode.png" alt="Desktop Mode" width="380" /><br />
-      <sub><b>Electron Desktop Mode</b></sub>
-    </td>
-  </tr>
-</table>
 
 ## Why it exists
 
