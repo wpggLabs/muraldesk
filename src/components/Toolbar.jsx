@@ -119,15 +119,6 @@ function Toolbar({
   useEffect(() => {
     if (!compact && moreOpen) setMoreOpen(false)
   }, [compact, moreOpen])
-  // Auto-close the More popover whenever the toolbar transitions to
-  // fully-hidden (Desktop / Electron / Focus mode lose `revealed`).
-  // Without this the popover would linger as a "ghost" panel in the
-  // corner of the screen — visually present, opacity-faded by the
-  // wrapper, but with stale state. Closing it on hide guarantees a
-  // fresh interaction next time the user reveals the toolbar.
-  useEffect(() => {
-    if (!revealed && moreOpen) setMoreOpen(false)
-  }, [revealed, moreOpen])
   useEffect(() => {
     if (!moreOpen) return
     function onDocMouseDown(e) {
@@ -282,6 +273,16 @@ function Toolbar({
 
   const visible = revealed
   const dim = !visible
+  // Auto-close the More popover whenever the toolbar transitions to
+  // fully-hidden (Desktop / Electron / Focus mode lose `revealed`).
+  // Without this the popover would linger as a "ghost" panel in the
+  // corner of the screen — visually present, opacity-faded by the
+  // wrapper, but with stale state. Closing it on hide guarantees a
+  // fresh interaction next time the user reveals the toolbar.
+  // (Declared here, after `revealed`, to avoid a TDZ ReferenceError.)
+  useEffect(() => {
+    if (!revealed && moreOpen) setMoreOpen(false)
+  }, [revealed, moreOpen])
   // Desktop Canvas, Electron overlay, AND Focus Mode all fully hide
   // the toolbar when not visible (opacity 0 + pointer-events: none +
   // slide up). Plain web without focus mode keeps the original
