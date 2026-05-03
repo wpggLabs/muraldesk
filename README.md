@@ -1,33 +1,62 @@
 <div align="center">
 
-<img src="public/icon.svg" alt="MuralDesk" width="112" height="112" />
+<img src="public/icon.svg" alt="MuralDesk" width="120" height="120" />
 
 # MuralDesk
 
-**A local-first visual mural layer for your desktop.**
-Pin images, videos, links, and notes onto a transparent overlay that floats over your real workspace.
+#### A quiet, local-first mural for your desktop.
 
-[![Electron](https://img.shields.io/badge/Electron-31-2B2E3A?logo=electron&logoColor=9FEAF9)](https://www.electronjs.org/)
-[![React](https://img.shields.io/badge/React-18-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-5-1B1B20?logo=vite&logoColor=FFD028)](https://vitejs.dev/)
-[![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-22A06B.svg)](LICENSE)
+Pin images, videos, links, and notes onto a transparent overlay that floats over your real workspace — or run the same board as a clean web app in any modern browser.
+
+[![Electron 31](https://img.shields.io/badge/Electron-31-2B2E3A?logo=electron&logoColor=9FEAF9&style=flat-square)](https://www.electronjs.org/)
+[![React 18](https://img.shields.io/badge/React-18-20232A?logo=react&logoColor=61DAFB&style=flat-square)](https://react.dev/)
+[![Vite 5](https://img.shields.io/badge/Vite-5-1B1B20?logo=vite&logoColor=FFD028&style=flat-square)](https://vitejs.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-22A06B?style=flat-square)](LICENSE)
+
+<br />
+
+<!-- Drop a hero screenshot or short loop here. Suggested: 1600×900 PNG or
+     a 6–10s GIF showing the overlay floating over a real desktop. -->
+<img src="docs/screenshots/hero.png" alt="MuralDesk floating over a real desktop" width="820" />
+
+<br /><br />
+
+<sub>
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#desktop-mode">Desktop Mode</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#tech-stack">Tech stack</a> ·
+  <a href="#roadmap">Roadmap</a>
+</sub>
 
 </div>
 
 ---
 
-## What it is
+## What is MuralDesk?
 
-MuralDesk is a desktop visual mural app. You drop **images, videos, YouTube links, direct media links, web links, and sticky notes** onto a clean transparent canvas that floats over your real desktop. Cards are draggable and resizable; empty space clicks straight through to the apps underneath.
+MuralDesk is a desktop visual board. You drop **images, videos, sticky notes, and links** onto a transparent canvas that floats over your real desktop. Cards stay fully interactive — drag, resize, hover controls — while empty space clicks straight through to whatever's underneath.
 
-It also runs as a standard **Progressive Web App** in any modern browser, installable on Chrome, Edge, and Safari.
+It also runs as a clean **Progressive Web App** in any modern browser. Same board, same shortcuts, same files.
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/web.png" alt="Web build" width="380" /><br />
+      <sub><b>Web / PWA</b></sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/desktop-mode.png" alt="Desktop Mode" width="380" /><br />
+      <sub><b>Electron Desktop Mode</b></sub>
+    </td>
+  </tr>
+</table>
 
 ## Why it exists
 
-People keep visual references in messy browser tabs, scattered desktop folders, screenshots dumped to `~/Downloads`, second monitors parked on Pinterest, and Slack DMs to themselves.
+Visual references end up scattered across browser tabs, screenshot folders, second monitors parked on Pinterest, and Slack DMs to yourself.
 
-MuralDesk gives them a quiet local-first wall to pin those references to — *next to* the work, not on top of it.
+MuralDesk gives them one quiet wall — pinned *next to* the work, not on top of it. No account, no cloud, no analytics.
 
 ---
 
@@ -35,36 +64,51 @@ MuralDesk gives them a quiet local-first wall to pin those references to — *ne
 
 ### Desktop overlay
 
-- Transparent, frameless, no shadow — only the cards render.
-- Click-through empty areas pass mouse events to the OS.
-- Items stay fully interactive (drag, resize, hover controls).
-- Full-display **Desktop Mode** with auto-hiding toolbar.
+- Transparent, frameless window — only the cards are drawn.
+- Empty regions click through to the apps underneath.
 - System tray with Show / Toggle Desktop Mode / Quit.
+- Full-display **Desktop Mode** with an auto-hiding toolbar.
 
 ### Content types
 
 | Type | Behavior |
 |---|---|
 | **Image** | Local file or direct URL → resizable image card. |
-| **Video** | Local file or direct URL → silent looping clip with hover-only controls. |
-| **YouTube** | Auto-detected URL → embedded player, looped and muted by default. |
-| **Web link** | Any other URL → favicon + title card with **Open** button. |
+| **Video** | Local file or direct URL → silent looping clip with hover controls. |
 | **Note** | Editable text card with a small color palette. |
+| **Link** | Smart card — see below. |
 
-### Editing
+### Smart embeds
 
-- Drag and resize anywhere on the canvas.
-- Hover any card for a compact mini-toolbar:
-  opacity slider · fit toggle (cover / contain) · lock · duplicate · delete.
-- One-click **Sample Board** to skip the empty state.
-- Keyboard shortcuts: `Ctrl/Cmd+Shift+I` / `V` / `L` / `T` / `F` for image / video / link / toolbar / fullscreen.
+A single Add-Link input becomes the right card based on the URL — no source picker, no manual toggles.
+
+- **YouTube · Vimeo · SoundCloud · Spotify · CodePen** → embedded playable card.
+- **Direct image URLs** (`.png` `.jpg` `.gif` `.webp` `.svg`) → image card.
+- **Direct video URLs** (`.mp4` `.webm` `.mov` `.ogg`) → playable video card.
+- **Anything else** → favicon + title card with **Open** and **Copy URL** chips.
+
+> **Safety.** Anything that isn't `http:` or `https:` (e.g. `javascript:`, `data:`, `file:`) is stripped before a card is ever created — both on paste and on backup import.
+
+### Editing & polish
+
+- Hover any card for a compact mini-toolbar — opacity · fit (cover/contain) · lock · duplicate · delete.
+- **Double-click** any card for **Focus mode** — centered, enlarged, dimmed backdrop. `Esc` to exit.
+- **Tidy** button shelf-packs every item into a clean grid inside the viewport.
+- **Sample Board** to skip the empty state.
+- Snap guides while dragging, with a soft 24 px grid.
+- A `?` shortcut opens the full keyboard reference inside the app.
 
 ### Local-first storage
 
 - **No account. No backend. No cloud.**
 - Layout in `localStorage`, media blobs in IndexedDB.
-- One-click **Backup** exports a single portable `.muraldesk.json` file (layout + base64-inlined media).
-- **Import** auto-detects backup vs. layout-only files.
+- Per-origin, per-profile — your board never leaves the device unless you export it.
+
+### Backup & export
+
+- One-click **Backup** writes a single portable `.muraldesk.json` file (layout + base64-inlined media).
+- **Layout-only Export** for quick sharing without media.
+- **Import** auto-detects which of the two formats it's reading.
 
 ---
 
@@ -72,23 +116,10 @@ MuralDesk gives them a quiet local-first wall to pin those references to — *ne
 
 The Electron build is where MuralDesk earns its name.
 
-- The window itself is transparent — the OS desktop and your other apps show through unchanged.
+- The window itself is transparent — your wallpaper and other apps show through unchanged.
 - A renderer-side hit-test flips click-through on the fly: cards stay clickable, empty regions don't capture mouse events.
-- Pressing `Ctrl/Cmd+Shift+F` (or the toolbar button) expands the overlay to cover the current display, using window bounds rather than OS-level fullscreen, so cards can move freely across the whole screen.
+- `Ctrl/Cmd + Shift + D` (or the toolbar button) expands the overlay to cover the current display, using window bounds rather than OS-level fullscreen, so cards can move freely across the whole screen.
 - The toolbar tucks into a thin reveal-zone at the top — bring the cursor up to show it again.
-
----
-
-## Smart link behavior
-
-A single Add Link input becomes four different card types based on URL parsing — no per-source picker, no manual toggles.
-
-- **YouTube URLs** → embedded playable card (`youtube-nocookie.com`).
-- **Direct image URLs** (`.png`, `.jpg`, `.gif`, `.webp`, `.svg`) → image card.
-- **Direct video URLs** (`.mp4`, `.webm`, `.mov`, `.ogg`) → playable video card.
-- **Anything else** → web link card with favicon, title, and an **Open** button.
-
-> **Safety.** Anything that isn't `http:` or `https:` (e.g. `javascript:`, `data:`, `file:`) is stripped before a card is ever created — both on paste and on backup import.
 
 ---
 
@@ -99,27 +130,31 @@ A single Add Link input becomes four different card types based on URL parsing �
 | Renderer | React 18 · Vite 5 |
 | Drag / resize | `react-rnd` |
 | Desktop shell | Electron 31 |
-| Persistence | `localStorage` (layout) · IndexedDB (blobs) |
+| Persistence | `localStorage` (layout) · IndexedDB (media blobs) |
 | PWA | Hand-rolled `manifest.webmanifest` + service worker |
 
-No backend. No auth. No analytics. No proprietary services.
+No backend. No auth. No analytics. No telemetry.
 
 ---
 
 ## Getting started
 
-> The Electron desktop build needs a real desktop OS (Windows, macOS, or Linux). It can't run inside Replit's container, which lacks the GUI / GTK / Chromium libraries Electron needs at runtime. The web / PWA build runs anywhere.
+> The Electron desktop build needs a real desktop OS (Windows, macOS, or Linux). It can't run inside Replit's container, which lacks the GUI libraries Electron needs at runtime. The web / PWA build runs anywhere.
 
-#### Web (development)
+### Run the web version
 
 ```bash
 npm install
 npm run dev:web
 ```
 
-Vite serves the renderer on `http://localhost:5000`.
+Vite serves the renderer at `http://localhost:5000`. For a production build:
 
-#### Desktop (development)
+```bash
+npm run build:web   # static site → dist/
+```
+
+### Run the desktop version
 
 ```bash
 npm install
@@ -128,17 +163,7 @@ npm run dev:desktop
 
 Spins up a dedicated Vite instance on `http://localhost:5173` and launches Electron pointed at it. Hot-reload works for renderer code; main-process changes need a manual restart.
 
-#### Web (production build)
-
-```bash
-npm run build:web
-```
-
-Outputs a static site to `dist/`. Serve it with any static host.
-
----
-
-## Build the Windows app
+### Build the Windows `.exe`
 
 ```bash
 npm run build:desktop
@@ -157,31 +182,32 @@ For a folder build with no installer (quick smoke test):
 npm run build:desktop:dir
 ```
 
-The installer is unsigned by default — see Limitations below.
+The installer is unsigned by default — see [Limitations](#current-limitations).
 
 ---
 
 ## Demo flow
 
 1. Launch MuralDesk.
-2. Click **Sample** in the toolbar to load a pre-arranged board.
+2. Click **✨ Sample** in the toolbar to load a pre-arranged board.
 3. Add an image, video, note, and link of your own.
-4. Drag and resize cards across the desktop. Hover one and drop its opacity to ~40%.
-5. Paste a YouTube URL — it auto-becomes an embedded player. Toggle interact-mode to seek and unmute.
-6. Click an empty region to confirm it passes through to whatever's behind MuralDesk.
-7. Press `Ctrl/Cmd+Shift+F` to enter Desktop Mode.
-8. Click **Backup** to export a single portable `.muraldesk.json` file.
-9. Refresh — everything persists. No upload happened.
+4. Drag and resize cards. Hover one and drop its opacity to ~40%.
+5. Paste a YouTube, Vimeo, SoundCloud, Spotify, or CodePen URL — it auto-becomes an embedded player.
+6. **Double-click** a card → Focus mode. `Esc` to exit.
+7. Click **▦ Tidy** to shelf-pack everything into a clean grid.
+8. Press `Ctrl/Cmd + Shift + D` to enter Desktop Mode. Click empty space to confirm it passes through to whatever's behind.
+9. Click **📦 Backup** to export a portable `.muraldesk.json` file.
+10. Refresh — everything persists. No upload happened.
 
 ---
 
 ## Current limitations
 
-- **Not a full wallpaper engine.** The overlay is a transparent window drawn *on top of* the desktop, not a layer drawn *under* desktop icons by the OS shell. Working on identical primitives across Windows, macOS, and Linux was the priority.
+- **Not a wallpaper engine.** The overlay is a transparent window drawn *on top of* the desktop, not a layer drawn *under* desktop icons by the OS shell.
 - **Unsigned Windows installer.** First-time launchers see SmartScreen and have to click *More info → Run anyway*. Code signing requires a paid certificate.
 - **Desktop builds need a real desktop OS.** Replit can't run Electron — use Windows, macOS, or Linux for `dev:desktop` and `build:desktop`.
-- **Multi-monitor support is basic.** The window remembers its position and reopens on the right monitor; Desktop Mode covers the current display only.
-- **No cloud sync.** Backup is a manual, explicit step. Adding cloud sync would compromise the local-first promise.
+- **Single-display Desktop Mode.** Desktop Mode covers the current display only; the window remembers which one it last opened on.
+- **No cloud sync, by design.** Backup is a manual, explicit step. Adding cloud sync would compromise the local-first promise.
 - **Web-version media is per-browser-profile.** IndexedDB is per-origin / per-profile. Use Backup to move between browsers.
 - **Some link previews depend on the target site.** Sites that block embedding via `X-Frame-Options` or `Content-Security-Policy` fall back to a favicon + title card.
 
@@ -190,15 +216,14 @@ The installer is unsigned by default — see Limitations below.
 ## Roadmap
 
 - Per-monitor overlay windows
-- Snap guides and soft grid
-- Board-level opacity / focus controls
-- Launch on startup (with start-in-tray and start-in-Desktop-Mode flags)
+- Drag-and-drop file / URL ingestion
+- Launch-on-startup (with start-in-tray and start-in-Desktop-Mode flags)
 - Theme controls (light / dark / custom accent)
-- More embed types (Vimeo, SoundCloud, Spotify, CodePen)
-- Wallpaper-layer experiments (Windows-first)
+- Additional embed providers
+- Wallpaper-layer experiments (Windows-first, exploratory)
 
 ---
 
 ## License
 
-Released under the MIT License — see [LICENSE](LICENSE).
+Released under the **MIT License** — see [LICENSE](LICENSE).
