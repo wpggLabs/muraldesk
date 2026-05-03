@@ -379,7 +379,6 @@ export default function BoardItem({
             transform: showControls ? 'translateY(0)' : 'translateY(-4px)',
             pointerEvents: showControls ? 'auto' : 'none',
             transition: 'opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out)',
-            zIndex: 20,
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
