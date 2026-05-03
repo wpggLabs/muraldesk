@@ -20,6 +20,7 @@ import {
 import BoardItem from './components/BoardItem'
 import Toolbar from './components/Toolbar'
 import EmptyState from './components/EmptyState'
+import ShortcutsModal from './components/ShortcutsModal'
 
 export default function App() {
   const {
@@ -53,6 +54,13 @@ export default function App() {
   // Toolbar so the cycle is observable from the keydown handler and
   // so the override survives Toolbar re-mounts.
   const [manualToolbarOverride, setManualToolbarOverride] = useState(null)
+
+  // Keyboard-shortcuts help modal. Opens via the `?` key (Shift+/ on
+  // most layouts) and via the toolbar's ⌨ Shortcuts pill. Esc closes
+  // (the modal owns its own capture-phase Esc handler so App's global
+  // Esc — deselect / exit Desktop Mode — does not also fire while
+  // the modal is open).
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
   // Desktop Canvas Mode + unified fullscreen control. On web this hook
   // wraps the document Fullscreen API; in Electron it talks to the main
@@ -523,6 +531,17 @@ export default function App() {
         }
       }
       if (isEditableTarget(e.target)) return
+      // `?` opens the shortcuts modal. The character `?` is what the
+      // browser reports for Shift+/ on US/most layouts, and for the
+      // dedicated `?` key on layouts that have one — so this works
+      // universally without us having to special-case Shift+Slash.
+      // Skipped while editing text (handled by the isEditableTarget
+      // gate above) so it never eats a real `?` keystroke in a note.
+      if (e.key === '?') {
+        e.preventDefault()
+        setShortcutsOpen((v) => !v)
+        return
+      }
       if (e.key === 'Escape') {
         if (desktopMode) setDesktopMode(false)
         setSelectedId(null)
@@ -656,6 +675,13 @@ export default function App() {
         onMinimizeWindow={handleMinimize}
         onCloseWindow={handleClose}
         manualOverride={manualToolbarOverride}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
+      />
+
+      <ShortcutsModal
+        open={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+        isElectron={isElectron}
       />
     </div>
   )

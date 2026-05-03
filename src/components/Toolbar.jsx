@@ -85,6 +85,10 @@ function Toolbar({
   // owns the state so the cycle is observable from the keyboard
   // handler and so the override survives toolbar re-mounts.
   manualOverride = null,
+  // Opens the keyboard-shortcuts help modal (rendered by App). The
+  // toolbar is just a dispatcher — the modal's open state lives in
+  // App so the `?` key shortcut and the pill can both toggle it.
+  onOpenShortcuts,
 }, ref) {
   const imageInputRef = useRef(null)
   const videoInputRef = useRef(null)
@@ -499,6 +503,14 @@ function Toolbar({
         />
 
         <Divider />
+
+        <PillBtn
+          icon="⌨"
+          label="Shortcuts"
+          compact
+          title="Keyboard shortcuts (?)"
+          onClick={() => onOpenShortcuts && onOpenShortcuts()}
+        />
 
         <PillBtn
           icon="🗑"
