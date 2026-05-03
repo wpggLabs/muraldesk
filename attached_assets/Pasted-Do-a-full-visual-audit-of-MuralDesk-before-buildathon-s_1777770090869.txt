@@ -1,0 +1,142 @@
+Do a full visual audit of MuralDesk before buildathon submission.
+
+READ-ONLY ONLY.
+
+Do not modify code.
+Do not refactor.
+Do not install packages.
+Do not change Electron overlay logic.
+Do not change click-through logic.
+Do not change storage/persistence.
+Do not change backup/export.
+Do not change package.json.
+Do not change service worker.
+
+Goal:
+Find any visual/UI/UX issues that could hurt the buildathon demo, GitHub presentation, desktop app feel, or first impression.
+
+Audit:
+
+1. Electron desktop visual experience
+- Transparent overlay
+- Desktop Mode
+- Click-through empty areas
+- Full-display overlay
+- Toolbar hide/reveal behavior
+- Toolbar crowding
+- Mini-toolbar on cards
+- Hover controls
+- Window controls
+- Tray expectations
+- Whether it feels like pinned objects on desktop, not an app dashboard
+
+2. Web/PWA visual experience
+- Empty state
+- Toolbar
+- Sample board
+- Cards
+- Smart embeds
+- Backup/export/import
+- Fullscreen behavior
+- Whether it looks professional and demo-ready
+
+3. README/GitHub visual presentation
+- Hero image
+- Broken image references
+- Screenshot paths
+- Badges
+- Section density
+- Visual hierarchy
+- Whether the README looks premium and trustworthy
+- Whether any claims look fake or outdated
+
+4. Mural objects
+Audit all item types:
+- Image cards
+- Uploaded video cards
+- Direct video links
+- YouTube embeds
+- Vimeo embeds
+- SoundCloud embeds
+- Spotify embeds
+- CodePen embeds
+- Normal web link cards
+- Notes
+
+Check:
+- sizing
+- spacing
+- shadows
+- hover controls
+- resize handles
+- selected state
+- focus mode if implemented
+- opacity controls if implemented
+- snap/tidy behavior if implemented
+- whether cards look clean or app-like
+
+5. Toolbar audit
+Check:
+- too many buttons
+- icon clarity
+- labels
+- More menu
+- Desktop Mode button
+- hidden/reveal behavior
+- whether it gets in the way
+- whether it looks premium
+- whether buttons wrap awkwardly on smaller screens
+
+6. Buildathon demo readiness
+Tell me:
+- best-looking demo path
+- screens/states to show
+- screens/states to avoid
+- what looks least professional
+- what can be fixed safely before submission
+- what should wait until after submission
+
+7. Mobile/browser size risks
+Even though MuralDesk is desktop-first, check:
+- 1280×720
+- 1366×768
+- 1920×1080
+- small browser window
+- whether toolbar wraps badly
+- whether sample board overlaps
+- whether cards spawn off-screen
+
+8. Output format
+
+Use this exact structure:
+
+A. Executive verdict
+PASS / PASS WITH WARNINGS / FAIL
+
+B. Top 20 visual issues ranked
+For each:
+- severity: HIGH / MEDIUM / LOW
+- area/screen
+- exact file(s)
+- what looks wrong
+- why it matters
+- recommended fix
+- whether it blocks buildathon submission
+
+C. Visual checklist by area
+Use ✅ / ⚠️ / ❌
+
+D. README/GitHub presentation risks
+
+E. Best 60-second demo path
+
+F. What to avoid showing
+
+G. Do-not-touch list before submission
+
+H. Safest visual patch order
+Only list small, surgical visual fixes.
+
+Important:
+Do not fix anything yet.
+Report only.
