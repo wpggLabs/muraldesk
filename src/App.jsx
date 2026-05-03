@@ -266,6 +266,70 @@ export default function App() {
     addItem('link', { url, title, description, width, height, ...spawnPosFor(width, height) })
   }, [addItem, spawnPosFor])
 
+  // Tidy: shelf-pack every item left-to-right, top-to-bottom into the
+  // visible viewport area, preserving each item's width/height. Only
+  // x/y are updated, via the same `updateItem` API the drag/resize
+  // handlers already use — so the change persists through the normal
+  // useBoard → localStorage path with zero new storage code. Items are
+  // tidied in their current array order (which already reflects the
+  // user's add / duplicate ordering); we don't re-sort by size, color,
+  // or kind so the result feels predictable.
+  //
+  // Layout area: x ∈ [PAD_X, vw - PAD_X], y ∈ [TOP_Y, vh - PAD_Y].
+  // TOP_Y = 130 reserves the top-center toolbar pill on web; in
+  // Electron transparent overlay the toolbar sits in the same band so
+  // the same reservation works there. Spacing between cards is GAP px
+  // on both axes. If a single item is wider than the available width
+  // (e.g. user resized a card to fill a huge monitor and then shrank
+  // their window), we still place it on its own row at x = PAD_X — we
+  // never silently shrink anyone's card.
+  //
+  // Confirmation gate: > 10 items prompts before applying. The cycle
+  // is intentionally non-undoable because we don't own undo history;
+  // the prompt is the safety net.
+  const handleTidy = useCallback(() => {
+    if (!items.length) return
+    if (items.length > 10) {
+      const ok = confirm(
+        `Tidy will rearrange ${items.length} items into a clean grid. Continue?`,
+      )
+      if (!ok) return
+    }
+    const PAD_X = 24
+    const PAD_Y = 24
+    const TOP_Y = 130
+    const GAP = 24
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+    const maxRight = Math.max(PAD_X + 200, vw - PAD_X)
+    let cursorX = PAD_X
+    let cursorY = TOP_Y
+    let rowHeight = 0
+    for (const it of items) {
+      const w = it.width || 200
+      const h = it.height || 140
+      // Wrap to a new shelf if this item won't fit the remainder of
+      // the current row (and we've already placed at least one item
+      // on this row — otherwise an oversize item just lives alone).
+      if (cursorX !== PAD_X && cursorX + w > maxRight) {
+        cursorX = PAD_X
+        cursorY += rowHeight + GAP
+        rowHeight = 0
+      }
+      const nx = Math.round(cursorX)
+      const ny = Math.round(cursorY)
+      // Skip the update if the position is already byte-identical —
+      // useBoard's update path will short-circuit anyway, but skipping
+      // here avoids N redundant React re-renders on an already-tidy
+      // board and a no-op writeback to localStorage.
+      if (nx !== it.x || ny !== it.y) {
+        updateItem(it.id, { x: nx, y: ny })
+      }
+      cursorX += w + GAP
+      if (h > rowHeight) rowHeight = h
+    }
+  }, [items, updateItem])
+
   const handleSampleBoard = useCallback(() => {
     // In Electron Desktop Mode the rich onboarding sample (with two
     // Welcome / Tips note panels) feels too "app-like" for what is
@@ -678,6 +742,7 @@ export default function App() {
         onAddLink={handleAddLink}
         onClear={() => { clearBoard(); setSelectedId(null) }}
         onSampleBoard={handleSampleBoard}
+        onTidy={handleTidy}
         onExport={handleExport}
         onExportBackup={handleExportBackup}
         onImport={handleImport}
