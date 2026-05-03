@@ -88,7 +88,7 @@ Everything below was implemented from scratch within the buildathon window:
 - **PWA layer** — `public/manifest.webmanifest`, `public/sw.js` (app-shell precache + smart fetch handler that never touches `blob:` URLs), installable across Chrome / Edge / Safari.
 - **Branded icon set + Vastago wordmark** — hand-authored SVG → 8 PNG/ICO targets via ImageMagick, locally-hosted Vastago font; no font CDN, no `sharp`/`canvas`/`puppeteer` dependency.
 - **Portable backup format** (`src/lib/backup.js`) — `buildBackup` / `restoreBackup` / `isBackupPayload` / `formatBytes`, base64 media encoding, four explicit size limits, skip-with-reason tracking so over-cap items still keep their layout without dangling references, link-URL re-sanitization on restore.
-- **Toolbar UX** — compact mode under 1500 px viewport with a **More** menu (Tidy / Export / Backup / Import / Snap / Board / Focus / Theme / Accent / Shortcuts / Fullscreen / Clear), Sample Board, EmptyState, in-app keyboard shortcuts modal.
+- **Toolbar UX** — **always compact in Electron** (single clean row at any width: Image · Video · Note · Link · Sample · More · Desktop · Min · Close); web/PWA goes compact under 1500 px viewport. The **More** menu holds every advanced action (Tidy / Export / Backup / Import / Display / Snap / Board / Focus / Theme / Accent / Shortcuts / Fullscreen / Clear). Sample Board, EmptyState, in-app keyboard shortcuts modal.
 - **Polished docs** — README, this submission doc, `docs/DEMO_SCRIPT.md`, `docs/SCREENSHOTS.md`, `docs/RELEASE.md`, `ROADMAP.md`, `PRODUCT.md`.
 
 ## Demo script
