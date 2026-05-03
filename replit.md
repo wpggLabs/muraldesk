@@ -14,7 +14,7 @@ MuralDesk is a frontend-only application using React and Vite, designed for stat
 **UI/UX Decisions:**
 - Full-viewport canvas for free-floating items.
 - Controls visible only on hover/selection of items.
-- Floating pill toolbar for main actions, with auto-dimming.
+- Floating pill toolbar for main actions, with auto-dimming. **Compact mode** (`src/components/Toolbar.jsx`) is forced ON whenever `isElectron` is true (regardless of viewport width) and on web below the 1500 px breakpoint. In compact mode the wordmark hides and every advanced action (Tidy / Export / Backup / Import / Display / Snap / Board / Focus / Theme / Accent / Shortcuts / Fullscreen / Clear) moves into a single **More** popover, leaving the always-visible row as: Image · Video · Note · Link · Sample · More · Desktop/Exit Desktop · Min · Close (the last three Electron-only).
 - Optional snap-to-grid with alignment guides.
 - Theming support for dark/light modes and accent colors.
 - Board-level opacity and Focus Mode for enhanced visibility control.

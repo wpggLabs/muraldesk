@@ -51,7 +51,7 @@ MuralDesk gives them one quiet wall — pinned *next to* the work, not on top of
 - Transparent, frameless Electron window — only the cards are drawn.
 - Empty regions click through to the apps underneath.
 - System tray with Show / Toggle Desktop Mode / Quit.
-- Toolbar collapses to a **More** menu on smaller widths.
+- Toolbar is **always compact in Electron** (single clean row at any width — Image · Video · Note · Link · Sample · More · Desktop · Min · Close), with a **More** menu holding every advanced action. The web/PWA build keeps the full inline pill row above 1500 px and collapses to the same compact layout below it.
 
 ### Mural objects
 - **Images** — local files or direct URLs.
