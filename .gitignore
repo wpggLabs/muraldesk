@@ -168,3 +168,6 @@ src-tauri/target/
 tmp/
 temp/
 .cache/
+
+# Ignore pasted AI prompt/export notes
+attached_assets/Pasted-*.txt
