@@ -102,6 +102,38 @@ function Toolbar({
   const [linkUrl, setLinkUrl] = useState('')
   const [linkTitle, setLinkTitle] = useState('')
   const [linkDesc, setLinkDesc] = useState('')
+  // "More" dropdown — only used when the toolbar is in compact mode
+  // (Electron Desktop Mode). Closed by default. Click-outside closes
+  // it via a global mousedown listener installed only while open.
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreBtnRef = useRef(null)
+  const morePanelRef = useRef(null)
+  // Compact toolbar = Electron Desktop Mode only. Web/PWA and normal-
+  // window Electron keep the full pill row. Toggling this string drives
+  // both (a) which pills render inline and (b) whether the More button
+  // + popover render at all.
+  const compact = desktopMode
+  // Auto-close the More popover whenever we leave compact mode (e.g.
+  // user clicks Exit Desktop), and install a global click-outside +
+  // Escape listener while open. The popover itself stops propagation.
+  useEffect(() => {
+    if (!compact && moreOpen) setMoreOpen(false)
+  }, [compact, moreOpen])
+  useEffect(() => {
+    if (!moreOpen) return
+    function onDocMouseDown(e) {
+      const inBtn = moreBtnRef.current && moreBtnRef.current.contains(e.target)
+      const inPanel = morePanelRef.current && morePanelRef.current.contains(e.target)
+      if (!inBtn && !inPanel) setMoreOpen(false)
+    }
+    function onKey(e) { if (e.key === 'Escape') setMoreOpen(false) }
+    document.addEventListener('mousedown', onDocMouseDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocMouseDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [moreOpen])
 
   // Imperative handle: lets App.jsx open the file pickers and the link
   // dialog from keyboard shortcuts (Ctrl+Shift+I / V / L) without
@@ -302,6 +334,100 @@ function Toolbar({
     setLinkDialog(false)
   }
 
+  // Advanced cluster — every pill that's NOT one of the always-visible
+  // essentials (Image · Video · Note · Link · Sample · Desktop · Min ·
+  // Close). Rendered inline in the toolbar pill when !compact, or
+  // inside the More popover when compact. Single source of truth so
+  // behavior is identical between the two layouts.
+  function renderAdvancedPills() {
+    return (
+      <>
+        {hasItems && (
+          <PillBtn
+            icon="▦"
+            label="Tidy"
+            onClick={() => onTidy && onTidy()}
+            title="Arrange all items into a clean grid"
+          />
+        )}
+        <PillBtn icon="↧" label="Export" onClick={onExport} title="Export layout JSON (this machine only — media stays in this browser)" />
+        <PillBtn icon="📦" label="Backup" onClick={onExportBackup} title="Export portable backup (.muraldesk.json) — includes media for cross-machine restore" />
+        <PillBtn icon="↥" label="Import" onClick={() => importInputRef.current?.click()} title="Import a layout or backup file (auto-detected)" />
+
+        <Divider />
+
+        {isElectron && (
+          <PillBtn
+            icon={displayMode === 'all' ? '▦' : '▢'}
+            label={displayMode === 'all' ? 'All Displays' : '1 Display'}
+            onClick={onToggleDisplayMode}
+            active={displayMode === 'all'}
+          />
+        )}
+        <PillBtn
+          icon="🧲"
+          label={snap ? 'Snap On' : 'Snap Off'}
+          onClick={onToggleSnap}
+          active={snap}
+          title={snap
+            ? 'Snap is ON — drag/resize snaps to a 24 px grid. Click to turn off.'
+            : 'Snap is OFF — drag/resize freely. Click to turn on.'}
+        />
+        <PillBtn
+          icon={boardOpacityIcon(boardOpacity)}
+          label={boardOpacity >= 0.999
+            ? 'Board'
+            : `Board ${Math.round(boardOpacity * 100)}%`}
+          onClick={onCycleBoardOpacity}
+          active={boardOpacity < 0.999}
+          title={`Board opacity ${Math.round(boardOpacity * 100)}% — click to cycle (100 / 75 / 50 / 30)`}
+        />
+        <PillBtn
+          icon="👁"
+          label={focusMode ? 'Focus On' : 'Focus'}
+          onClick={onToggleFocusMode}
+          active={focusMode}
+          title={focusMode
+            ? 'Focus mode is ON — toolbar hides unless you hover the top of the screen or an item. Click to turn off.'
+            : 'Focus mode is OFF — toolbar stays visible. Click to enter focus mode (hover top or any item to reveal).'}
+        />
+
+        <Divider />
+
+        <PillBtn
+          icon={themeMode === 'light' ? '☀' : themeMode === 'system' ? '◑' : '☾'}
+          label={themeMode === 'light' ? 'Light' : themeMode === 'system' ? 'System' : 'Dark'}
+          onClick={onCycleThemeMode}
+          title={`Theme: ${themeMode} — click to cycle (Dark → Light → System)`}
+        />
+        <PillBtn
+          icon="●"
+          iconColor="var(--accent)"
+          label={themeAccent.charAt(0).toUpperCase() + themeAccent.slice(1)}
+          onClick={onCycleThemeAccent}
+          title={`Accent: ${themeAccent} — click to cycle (Purple → Blue → Green → Orange)`}
+        />
+
+        <Divider />
+
+        <PillBtn
+          icon="⌨"
+          label="Shortcuts"
+          compact
+          title="Keyboard shortcuts (?)"
+          onClick={() => onOpenShortcuts && onOpenShortcuts()}
+        />
+
+        <PillBtn
+          icon="🗑"
+          label="Clear"
+          onClick={() => { if (confirm('Clear all items from the board?')) onClear() }}
+          danger
+        />
+      </>
+    )
+  }
+
   return (
     <>
       {/*
@@ -391,23 +517,30 @@ function Toolbar({
         <Divider />
 
         <PillBtn icon="✨" label="Sample" onClick={onSampleBoard} />
-        {hasItems && (
-          <PillBtn
-            icon="▦"
-            label="Tidy"
-            onClick={() => onTidy && onTidy()}
-            title="Arrange all items into a clean grid"
-          />
-        )}
-        <PillBtn icon="↧" label="Export" onClick={onExport} title="Export layout JSON (this machine only — media stays in this browser)" />
-        {/* Portable backup — same JSON shape as Export but with
-            media blobs encoded inline. Restorable on another
-            machine. The companion Import button auto-detects which
-            of the two formats it's reading. */}
-        <PillBtn icon="📦" label="Backup" onClick={onExportBackup} title="Export portable backup (.muraldesk.json) — includes media for cross-machine restore" />
-        <PillBtn icon="↥" label="Import" onClick={() => importInputRef.current?.click()} title="Import a layout or backup file (auto-detected)" />
 
-        <Divider />
+        {/* ---------------- Advanced cluster ---------------------------
+            In compact mode (Electron Desktop Mode) every pill below
+            moves into the More popover instead of rendering inline,
+            keeping the always-visible toolbar to: MuralDesk · Image ·
+            Video · Note · Link · Sample · More · Desktop · Min · Close.
+            The popover renders the same JSX via renderAdvancedPills()
+            so behavior is byte-identical to the inline form. */}
+        {!compact && renderAdvancedPills()}
+
+        {/* Compact-mode More button — opens the popover that contains
+            every pill from the advanced cluster. Active styling while
+            open so it reads as a toggle. */}
+        {compact && (
+          <span ref={moreBtnRef} style={{ display: 'inline-flex' }}>
+            <PillBtn
+              icon="⋯"
+              label="More"
+              onClick={() => setMoreOpen((v) => !v)}
+              active={moreOpen}
+              title="More board actions"
+            />
+          </span>
+        )}
 
         {/*
           The Fullscreen button is web/PWA only. In Electron the Desktop
@@ -417,8 +550,9 @@ function Toolbar({
           two redundant toggles makes the toolbar feel cluttered and
           "app-like". Web keeps the Fullscreen button so the
           Ctrl/Cmd+Shift+F shortcut and toolbar control still pair up.
+          Hidden in compact mode (which is Electron-only anyway).
         */}
-        {!isElectron && (
+        {!isElectron && !compact && (
           <PillBtn
             icon={isFullscreen ? '⤡' : '⤢'}
             label={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
@@ -434,103 +568,6 @@ function Toolbar({
             active={desktopMode}
           />
         )}
-
-        {isElectron && (
-          <PillBtn
-            icon={displayMode === 'all' ? '▦' : '▢'}
-            label={displayMode === 'all' ? 'All Displays' : '1 Display'}
-            onClick={onToggleDisplayMode}
-            active={displayMode === 'all'}
-          />
-        )}
-
-        {/* Snap-to-grid toggle. Lives in the workspace-mode cluster
-            alongside Fullscreen / Desktop / Display so it reads as a
-            "view mode" rather than an item action. Default off — the
-            mural feel is preserved unless the user opts in. */}
-        <PillBtn
-          icon="🧲"
-          label={snap ? 'Snap On' : 'Snap Off'}
-          onClick={onToggleSnap}
-          active={snap}
-          title={snap
-            ? 'Snap is ON — drag/resize snaps to a 24 px grid. Click to turn off.'
-            : 'Snap is OFF — drag/resize freely. Click to turn on.'}
-        />
-
-        {/* Board opacity — cycle button. Click advances to the next
-            step (100 → 75 → 50 → 30 → 100). Active when < 100% so
-            the user can see at a glance that a fade is applied. The
-            icon glyph mirrors the per-item opacity icons (●/◕/◐/◔)
-            so both opacity systems read consistently. The board fade
-            is a runtime visual multiplier only — it never mutates
-            per-item `item.opacity`, so refresh / export / import
-            round-trip identical item shapes. */}
-        <PillBtn
-          icon={boardOpacityIcon(boardOpacity)}
-          label={boardOpacity >= 0.999
-            ? 'Board'
-            : `Board ${Math.round(boardOpacity * 100)}%`}
-          onClick={onCycleBoardOpacity}
-          active={boardOpacity < 0.999}
-          title={`Board opacity ${Math.round(boardOpacity * 100)}% — click to cycle (100 / 75 / 50 / 30)`}
-        />
-
-        {/* Focus Mode toggle. When ON, the toolbar fully hides unless
-            the cursor is in the top reveal zone OR any pinned item is
-            hovered. Items themselves stay fully visible (subject to
-            board opacity) — the mode only affects toolbar chrome,
-            never the mural itself. No extra panels per spec. */}
-        <PillBtn
-          icon="👁"
-          label={focusMode ? 'Focus On' : 'Focus'}
-          onClick={onToggleFocusMode}
-          active={focusMode}
-          title={focusMode
-            ? 'Focus mode is ON — toolbar hides unless you hover the top of the screen or an item. Click to turn off.'
-            : 'Focus mode is OFF — toolbar stays visible. Click to enter focus mode (hover top or any item to reveal).'}
-        />
-
-        <Divider />
-
-        {/* Theme mode cycle: Dark → Light → System → Dark.
-            Active styling is intentionally suppressed — the icon glyph
-            already communicates the current state, so we don't want a
-            permanent accent ring on a setting that's always "set". */}
-        <PillBtn
-          icon={themeMode === 'light' ? '☀' : themeMode === 'system' ? '◑' : '☾'}
-          label={themeMode === 'light' ? 'Light' : themeMode === 'system' ? 'System' : 'Dark'}
-          onClick={onCycleThemeMode}
-          title={`Theme: ${themeMode} — click to cycle (Dark → Light → System)`}
-        />
-
-        {/* Accent cycle: Purple → Blue → Green → Orange → Purple.
-            The icon dot is filled with var(--accent), so it always
-            previews the CURRENT accent (after the click resolves). */}
-        <PillBtn
-          icon="●"
-          iconColor="var(--accent)"
-          label={themeAccent.charAt(0).toUpperCase() + themeAccent.slice(1)}
-          onClick={onCycleThemeAccent}
-          title={`Accent: ${themeAccent} — click to cycle (Purple → Blue → Green → Orange)`}
-        />
-
-        <Divider />
-
-        <PillBtn
-          icon="⌨"
-          label="Shortcuts"
-          compact
-          title="Keyboard shortcuts (?)"
-          onClick={() => onOpenShortcuts && onOpenShortcuts()}
-        />
-
-        <PillBtn
-          icon="🗑"
-          label="Clear"
-          onClick={() => { if (confirm('Clear all items from the board?')) onClear() }}
-          danger
-        />
 
         {isElectron && (
           <>
@@ -555,6 +592,40 @@ function Toolbar({
         <input ref={videoInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleVideoFile} />
         <input ref={importInputRef} type="file" accept="application/json,.json,.muraldesk.json" style={{ display: 'none' }} onChange={handleImportFile} />
       </div>
+
+      {/* More popover — only rendered in compact mode (Electron Desktop
+          Mode). Anchored just below the toolbar pill, centered on the
+          viewport. data-muraldesk-interactive keeps Electron click-
+          through treating it as fully interactive. The same pills
+          render here as in renderAdvancedPills() above — single source
+          of truth, so behavior is identical. */}
+      {compact && moreOpen && (
+        <div
+          ref={morePanelRef}
+          data-muraldesk-interactive="true"
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            marginTop: 6,
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 1,
+            padding: '5px 7px',
+            background: 'var(--surface-glass-strong)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-pill)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.04) inset',
+            backdropFilter: 'blur(18px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(18px) saturate(180%)',
+            maxWidth: 'min(92vw, 760px)',
+            animation: 'muraldesk-overlay-in 160ms var(--ease-out) both',
+            WebkitAppRegion: 'no-drag',
+          }}
+        >
+          {renderAdvancedPills()}
+        </div>
+      )}
       </div>
 
       {linkDialog && (

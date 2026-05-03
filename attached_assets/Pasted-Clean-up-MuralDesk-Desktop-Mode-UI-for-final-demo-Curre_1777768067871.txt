@@ -1,0 +1,77 @@
+Clean up MuralDesk Desktop Mode UI for final demo.
+
+Current issue:
+The transparent overlay works, but Desktop Mode looks crowded. The toolbar has too many buttons and Sample still creates big Welcome/Tips cards.
+
+Goal:
+Make Desktop Mode feel premium and minimal.
+
+Do not touch:
+- Electron overlay math
+- click-through hook
+- storage/persistence
+- backup logic
+- package.json dependencies
+- service worker
+
+Changes:
+
+1. Split toolbar into "simple" and "more" modes
+- In Electron Desktop Mode, show only essential buttons by default:
+  - MuralDesk
+  - Image
+  - Video
+  - Note
+  - Link
+  - Sample
+  - More
+  - Exit Desktop
+  - Close
+- Move these into a More menu/dropdown:
+  - Tidy
+  - Export
+  - Backup
+  - Import
+  - Display count
+  - Snap
+  - Board opacity
+  - Focus
+  - Theme
+  - Accent
+  - Clear
+- Web/PWA can keep the fuller toolbar if easier.
+- Do not remove features, just hide advanced actions behind More in Desktop Mode.
+
+2. Desktop Mode sample board should be minimal
+- In Electron Desktop Mode, Sample should NOT create big Welcome/Tips cards.
+- It should create clean demo objects only:
+  - sample image
+  - one embed/link card
+  - one small note
+- No large instructional panels.
+- Web/PWA sample can stay richer.
+
+3. Hide toolbar more aggressively after adding items
+- Empty board: toolbar visible.
+- After items exist: toolbar hides by default.
+- Show toolbar only on top reveal zone or item hover.
+- Keep the existing hide delay so it does not flicker.
+
+4. Make item controls smaller
+- Mini-toolbar on cards should be compact.
+- Buttons should not cover too much of the item.
+- Keep lock/duplicate/delete visible on hover.
+
+5. Keep all behavior working
+- Drag/resize still works.
+- Desktop Mode full-display still works.
+- Click-through empty areas still works.
+- Backup/export/import still work from More.
+- Smart embeds still work.
+- Web/PWA still works.
+
+After changes:
+- Run npm run build:web.
+- node --check electron/main.cjs.
+- node --check electron/preload.cjs.
+- Report exact files changed.

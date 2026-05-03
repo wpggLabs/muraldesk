@@ -1,0 +1,57 @@
+Apply Vastago font branding to MuralDesk.
+
+Goal:
+Use Vastago as the main MuralDesk brand font inside the app, and prepare GitHub README visuals that use Vastago.
+
+Important:
+Do not touch Electron overlay math.
+Do not touch click-through.
+Do not touch storage/persistence.
+Do not touch backup logic.
+Do not touch package dependencies unless absolutely necessary.
+
+APP FONT REQUIREMENTS:
+- Add Vastago font files to the project if they already exist or if I provide them.
+- Preferred location:
+  public/fonts/vastago-grotesk-regular.ttf
+  public/fonts/vastago-grotesk-black.ttf
+- Add @font-face rules in src/index.css.
+- Use VastagoRegular as the default UI font.
+- Use VastagoBlack for:
+  - MuralDesk logo/title
+  - major headings
+  - important labels
+- Fallback stack should be:
+  VastagoRegular, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+- Do not load Google Fonts if Vastago is available locally.
+- Remove or replace any external Google Fonts import if safe.
+- Make sure web/PWA and Electron both load the font.
+- Keep toolbar, cards, notes, dialogs, and README-like in-app text visually clean.
+
+GITHUB README REQUIREMENTS:
+GitHub Markdown cannot force custom fonts globally, so do not try to use CSS for README font.
+Instead:
+- Create a branded README hero image using Vastago if possible.
+- Suggested path:
+  docs/assets/muraldesk-hero.png
+- Hero should include:
+  - MuralDesk
+  - “Local-first visual mural layer for your desktop”
+  - dark premium background
+  - floating card/mural visual
+- Update README.md to use the hero image near the top.
+- Do not claim the README text itself uses Vastago, because GitHub controls Markdown fonts.
+
+SAFETY:
+- If Vastago font files are missing, stop and report exactly where I should place them.
+- Do not substitute random fonts without asking.
+- Do not download fonts from the internet.
+- Do not commit font files unless they are already in the repo or I explicitly provide them and have rights to use them.
+
+TEST:
+- Run npm run build:web
+- Confirm Electron files still parse:
+  node --check electron/main.cjs
+  node --check electron/preload.cjs
+- Report exact files changed
+- Report whether Vastago files were found or missing
