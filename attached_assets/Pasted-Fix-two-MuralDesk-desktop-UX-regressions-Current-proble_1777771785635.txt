@@ -1,0 +1,87 @@
+Fix two MuralDesk desktop UX regressions.
+
+Current problems from Windows screenshot:
+1. The toolbar/menu bar is back to being too crowded. It wraps into multiple rows with too many buttons visible.
+2. Added items feel stuck inside a box instead of being freely movable across the whole display.
+
+READ CAREFULLY:
+Do not touch storage/persistence.
+Do not touch IndexedDB/mediaStore.
+Do not touch backup logic.
+Do not touch service worker.
+Do not touch package.json.
+Do not add dependencies.
+
+Goal:
+In Electron, MuralDesk should feel like a clean transparent desktop mural layer, not a boxed app with a crowded menu.
+
+PART 1 — Electron toolbar must always be compact
+- In Electron, always use compact toolbar layout.
+- Do not depend on viewport width for Electron compact mode.
+- Desktop/PWA web can use viewport-based compact mode.
+- Electron toolbar should show only:
+  - Image
+  - Video
+  - Note
+  - Link
+  - Sample
+  - More
+  - Desktop / Exit Desktop
+  - Minimize
+  - Close
+- Move all advanced actions into More in Electron:
+  - Tidy
+  - Export
+  - Backup
+  - Import
+  - Display mode
+  - Snap
+  - Board opacity
+  - Focus
+  - Theme
+  - Accent
+  - Shortcuts
+  - Clear
+  - Fullscreen if applicable
+- Hide the MuralDesk wordmark in Electron compact mode if it causes width issues.
+- Toolbar must stay one clean row on 1280×720 and 1366×768.
+- No multi-row toolbar in Electron.
+
+PART 2 — Fix the “stuck in a box” movement issue
+- Items can only move inside the Electron BrowserWindow. Make sure Desktop Mode expands the BrowserWindow to the full current display.
+- When Electron Desktop Mode is enabled:
+  - use the display bounds for the monitor the window is on
+  - set the BrowserWindow bounds to cover that full display
+  - renderer root/canvas should be fixed/absolute inset: 0
+  - html/body/#root should be 100vw/100vh
+  - no max-width, padding, centered container, or hidden parent reducing item movement
+  - react-rnd parent bounds should be the full display-sized canvas
+- When Desktop Mode is OFF:
+  - normal window mode can stay bounded to the normal window.
+- Make the Desktop button label clearer:
+  - “Desktop” when not active
+  - “Exit Desktop” when active
+- If mural.desktopMode is true on launch, open directly as full-display overlay, not a small remembered box.
+- Do not save full-display overlay bounds as normal window geometry.
+
+PART 3 — Clean sample board for Electron
+- In Electron/Desktop Mode sample board should not create giant Welcome/Tips cards.
+- Use clean mural objects only.
+- No instructional panels.
+- If a sample embed fails, it should not create a giant ugly black/404 card in the main demo path.
+- Prefer stable sample URLs/cards that look good.
+
+PART 4 — Verify
+Run:
+- npm run build:web
+- node --check electron/main.cjs
+- node --check electron/preload.cjs
+
+Also report:
+- exact files changed
+- whether Electron toolbar is now always compact
+- whether Desktop Mode uses full current display bounds
+- whether item movement is still bounded only by the full display in Desktop Mode
+- any remaining limitations
+
+Do not modify unrelated files.
