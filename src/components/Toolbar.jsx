@@ -28,6 +28,11 @@ function Toolbar({
   onAddLink,
   onClear,
   onSampleBoard,
+  // Tidy: shelf-packs every item into a clean grid inside the
+  // current viewport via x/y updates only. App owns the geometry
+  // math; toolbar is just a dispatcher. Hidden when there are no
+  // items so an empty board doesn't show a useless button.
+  onTidy,
   onExport,
   onExportBackup,
   onImport,
@@ -386,6 +391,14 @@ function Toolbar({
         <Divider />
 
         <PillBtn icon="✨" label="Sample" onClick={onSampleBoard} />
+        {hasItems && (
+          <PillBtn
+            icon="▦"
+            label="Tidy"
+            onClick={() => onTidy && onTidy()}
+            title="Arrange all items into a clean grid"
+          />
+        )}
         <PillBtn icon="↧" label="Export" onClick={onExport} title="Export layout JSON (this machine only — media stays in this browser)" />
         {/* Portable backup — same JSON shape as Export but with
             media blobs encoded inline. Restorable on another
