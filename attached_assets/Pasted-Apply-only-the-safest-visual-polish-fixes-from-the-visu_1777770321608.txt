@@ -1,0 +1,65 @@
+Apply only the safest visual polish fixes from the visual audit.
+
+Do not touch:
+- electron/main.cjs
+- electron/preload.cjs
+- useBoard.js
+- useElectronClickThrough.js
+- mediaStore.js
+- backup.js
+- service worker
+- package.json
+- Electron overlay/click-through logic
+- storage/persistence
+
+Fix only these:
+
+1. Toolbar compact mode on laptop widths
+Current issue:
+At 1280×720 the toolbar wraps into 3 rows and looks like a heavy dashboard.
+
+Change:
+- In Toolbar.jsx, make compact mode active when:
+  - desktopMode is true
+  - OR viewport width is under 1500px
+- Use existing More popover behavior for advanced actions.
+- Keep essential actions inline.
+- Move advanced actions into More.
+- Add a small resize listener if needed so it updates when viewport changes.
+- This should make the toolbar stay as a clean single floating pill on 1280×720 and 1366×768.
+
+2. Minimal sample board everywhere
+Current issue:
+Web sample board still creates big Welcome/Tips/Local-first tutorial notes.
+
+Change:
+- In App.jsx handleSampleBoard, pass minimal: true always.
+- Or otherwise make the sample board always use the cleaner minimal version.
+- It should feel like mural content, not onboarding panels.
+
+3. Empty state punctuation
+- Add a period to the EmptyState headline if missing.
+
+4. Sample SVG cleanup
+- In sampleBoard.js, remove the “Replace with your own” line from the sample SVG/image if present.
+- Keep the sample image abstract/premium.
+
+5. Hide wordmark in compact toolbar
+- When compact mode is active, hide the MURALDESK wordmark/status area to save width.
+- Keep the toolbar visually balanced.
+
+Rules:
+- No feature changes.
+- No storage changes.
+- No Electron changes.
+- No package changes.
+- Keep web/PWA and Electron working.
+- Do not redesign the whole toolbar.
+- Keep the existing More menu behavior.
+
+After changes:
+- Run npm run build:web
+- node --check electron/main.cjs
+- node --check electron/preload.cjs
+- Report exact files changed
+- Confirm whether toolbar stays single-row at 1280×720
