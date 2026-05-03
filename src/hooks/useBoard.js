@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { v4 as uuidv4 } from 'uuid'
 import { saveBlob, getBlob, deleteBlob, clearAllBlobs } from '../lib/mediaStore'
+
+const createId = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 const STORAGE_KEY = 'muraldesk-board'
 
@@ -82,7 +85,7 @@ export function useBoard() {
 
   const addItem = useCallback((type, data = {}) => {
     const item = {
-      id: uuidv4(),
+      id: createId(),
       type,
       x: 80 + Math.random() * 200,
       y: 80 + Math.random() * 200,
@@ -100,7 +103,7 @@ export function useBoard() {
   }, [])
 
   const addMediaItem = useCallback(async (type, file, extra = {}) => {
-    const id = uuidv4()
+    const id = createId()
     let persisted = false
     try {
       await saveBlob(id, file)
@@ -162,7 +165,7 @@ export function useBoard() {
   const duplicateItem = useCallback(async (id) => {
     const original = items.find((x) => x.id === id)
     if (!original) return
-    const newId = uuidv4()
+    const newId = createId()
     let newMediaId
     let newSrc
     if (original.mediaId) {

@@ -1,4 +1,6 @@
-import { v4 as uuidv4 } from 'uuid'
+const createId = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 const SAMPLE_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" preserveAspectRatio="xMidYMid slice">
@@ -53,7 +55,7 @@ export function buildSampleItems(opts = {}) {
 
     return [
       {
-        id: uuidv4(),
+        id: createId(),
         type: 'image',
         src: SAMPLE_IMAGE_SRC,
         label: 'Sample image',
@@ -65,7 +67,7 @@ export function buildSampleItems(opts = {}) {
         zIndex: baseZ + 1,
       },
       {
-        id: uuidv4(),
+        id: createId(),
         type: 'link',
         url: 'https://en.wikipedia.org/wiki/Mood_board',
         title: 'What is a mood board?',
@@ -78,7 +80,7 @@ export function buildSampleItems(opts = {}) {
         zIndex: baseZ + 2,
       },
       {
-        id: uuidv4(),
+        id: createId(),
         type: 'note',
         text: 'Sample note',
         // Centered horizontally, just below the image/link row.
@@ -125,7 +127,7 @@ export function buildSampleItems(opts = {}) {
   return [
     // Row 1 — Welcome note (col A, h=180)
     {
-      id: uuidv4(),
+      id: createId(),
       type: 'note',
       text: '👋 Welcome to MuralDesk\n\nA visual desk for ambient inspiration.\nPin images, videos, links, and notes —\neverything stays on your machine.',
       x: COL.a + ox,
@@ -137,7 +139,7 @@ export function buildSampleItems(opts = {}) {
     },
     // Row 1 — Spotify (col B, compact track player, vertically centered in the 180-row)
     {
-      id: uuidv4(),
+      id: createId(),
       type: 'link',
       // Smells Like Teen Spirit — canonical, always-online demo track.
       url: 'https://open.spotify.com/track/5ghIJDpPoe3CfHMGu71E6T',
@@ -150,7 +152,7 @@ export function buildSampleItems(opts = {}) {
     },
     // Row 1 — Local-first reassurance note (col C, h=180)
     {
-      id: uuidv4(),
+      id: createId(),
       type: 'note',
       text: '🔒 Local-first\n\n· No account\n· No cloud\n· No tracking\n\nYour board lives on this machine.',
       x: COL.c + ox,
@@ -163,7 +165,7 @@ export function buildSampleItems(opts = {}) {
 
     // Row 2 — YouTube (col A, h=210)
     {
-      id: uuidv4(),
+      id: createId(),
       type: 'link',
       // "Big Buck Bunny" official YouTube upload — public, always-online.
       url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
@@ -176,7 +178,7 @@ export function buildSampleItems(opts = {}) {
     },
     // Row 2 — Vimeo (col B, h=210)
     {
-      id: uuidv4(),
+      id: createId(),
       type: 'link',
       // "The Mountain" by TSO Photography — Vimeo's classic public demo.
       url: 'https://vimeo.com/22439234',
@@ -189,7 +191,7 @@ export function buildSampleItems(opts = {}) {
     },
     // Row 2 — Direct image URL link card (col C, h=210)
     {
-      id: uuidv4(),
+      id: createId(),
       type: 'link',
       // Wikimedia Commons — Hubble's "Pillars of Creation" thumbnail.
       // Direct .jpg URL → LinkCard renders inline <img>.
@@ -204,7 +206,7 @@ export function buildSampleItems(opts = {}) {
 
     // Row 3 — SoundCloud (col A, h=150)
     {
-      id: uuidv4(),
+      id: createId(),
       type: 'link',
       // Forss — "Flickermood": canonical creative-commons SC track.
       url: 'https://soundcloud.com/forss/flickermood',
@@ -217,7 +219,7 @@ export function buildSampleItems(opts = {}) {
     },
     // Row 3 — Direct video URL link card (col B, h=150)
     {
-      id: uuidv4(),
+      id: createId(),
       type: 'link',
       // Google's public Big Buck Bunny mirror — stable .mp4 URL, no auth.
       url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
@@ -230,7 +232,7 @@ export function buildSampleItems(opts = {}) {
     },
     // Row 3 — CodePen (col C, h=150)
     {
-      id: uuidv4(),
+      id: createId(),
       type: 'link',
       // Chris Coyier (CodePen co-founder) — small, stable demo pen.
       url: 'https://codepen.io/chriscoyier/pen/RwKwoyZ',
