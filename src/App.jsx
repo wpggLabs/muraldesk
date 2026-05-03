@@ -730,7 +730,7 @@ export default function App() {
           snapGrid={snapGrid}
           boardOpacity={boardOpacity}
           focused={focusedItemId === item.id}
-          onRequestFocus={() => setFocusedItemId(item.id)}
+          onRequestFocus={item.type === 'note' ? undefined : () => setFocusedItemId(item.id)}
           onExitFocus={() => setFocusedItemId(null)}
           isElectron={isElectron}
         />

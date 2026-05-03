@@ -260,6 +260,7 @@ export default function BoardItem({
       // drag / resize / click work as expected. Outside any card the
       // transparent canvas becomes click-through.
       className="muraldesk-card-rnd"
+      data-muraldesk-interactive="true"
       position={{ x: item.x, y: item.y }}
       size={{ width: item.width, height: item.height }}
       onDragStart={handleDragStart}
@@ -299,7 +300,9 @@ export default function BoardItem({
       }}
     >
       <div
+        data-muraldesk-interactive="true"
         onDoubleClick={(e) => {
+          if (item.type === 'note') return
           // Double-click anywhere on the card body enters Focus mode.
           // Skipped on .no-drag descendants (mini-toolbar, link chrome,
           // textarea, video controls) so double-clicking text to select
@@ -331,6 +334,7 @@ export default function BoardItem({
           (which we do below).
         */}
         <div
+          data-muraldesk-interactive="true"
           style={{
             position: 'absolute',
             inset: 0,
@@ -357,6 +361,7 @@ export default function BoardItem({
             independent of item.opacity. */}
         <div
           className="no-drag"
+          data-muraldesk-interactive="true"
           style={{
             position: 'absolute',
             top: 6,
@@ -451,7 +456,7 @@ export default function BoardItem({
       </div>
     </Rnd>
     {guides}
-    {focused && (
+    {focused && item.type !== 'note' && (
       <FocusOverlay
         isElectron={isElectron}
         onExit={onExitFocus}
@@ -525,6 +530,7 @@ function FocusOverlay({ isElectron, onExit, renderContent }) {
       }}
     >
       <div
+        data-muraldesk-interactive="true"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         style={{

@@ -33,23 +33,62 @@ function noteTextColor(bg) {
 export default function NoteCard({ item, onUpdate, hovered }) {
   const textColor = noteTextColor(item.color)
   const [editing, setEditing] = useState(false)
+  const rootRef = useRef(null)
   const textRef = useRef(null)
+  const interactiveTokenRef = useRef(`note:${item.id}`)
+
+  function forceElectronInteractive(active) {
+    if (typeof window === 'undefined') return
+    const token = interactiveTokenRef.current
+    window.dispatchEvent(new CustomEvent('muraldesk:force-interactive', {
+      detail: { active, token },
+    }))
+    if (!active) return
+    try {
+      window.muraldesk?.setIgnoreMouseEvents?.(false)
+      window.muraldesk?.focusWindow?.()
+    } catch {
+      /* ignore Electron bridge failures */
+    }
+  }
 
   useEffect(() => {
-    if (editing && textRef.current) textRef.current.focus()
+    if (!editing) return
+    forceElectronInteractive(true)
+    if (textRef.current) textRef.current.focus()
+    return () => forceElectronInteractive(false)
   }, [editing])
+
+  useEffect(() => {
+    return () => forceElectronInteractive(false)
+  }, [])
 
   function stopEvent(e) {
     e.stopPropagation()
+    forceElectronInteractive(true)
   }
 
   function beginEditing(e) {
     if (e) e.stopPropagation()
+    forceElectronInteractive(true)
     setEditing(true)
+  }
+
+  function releaseIfIdle() {
+    const root = rootRef.current
+    if (editing) return
+    if (root && root.contains(document.activeElement)) return
+    forceElectronInteractive(false)
   }
 
   return (
     <div
+      ref={rootRef}
+      data-muraldesk-interactive="true"
+      onMouseEnter={() => forceElectronInteractive(true)}
+      onMouseMove={() => forceElectronInteractive(true)}
+      onPointerDownCapture={() => forceElectronInteractive(true)}
+      onMouseLeave={releaseIfIdle}
       style={{
         width: '100%',
         height: '100%',
@@ -72,6 +111,7 @@ export default function NoteCard({ item, onUpdate, hovered }) {
           resize handle (z:25) so swatches always win clicks at the top-left. */}
       <div
         className="no-drag"
+        data-muraldesk-interactive="true"
         onMouseDown={(e) => e.stopPropagation()}
         style={{
           display: 'flex',
@@ -88,6 +128,7 @@ export default function NoteCard({ item, onUpdate, hovered }) {
         {NOTE_COLORS.map((c) => (
           <div
             key={c}
+            data-muraldesk-interactive="true"
             onClick={() => onUpdate(item.id, { color: c })}
             title="Note color"
             style={{
@@ -102,63 +143,45 @@ export default function NoteCard({ item, onUpdate, hovered }) {
         ))}
       </div>
 
-      {editing ? (
-        <textarea
-          ref={textRef}
-          className="no-drag"
-          data-muraldesk-interactive="true"
-          value={item.text || ''}
-          onChange={(e) => onUpdate(item.id, { text: e.target.value })}
-          onFocus={stopEvent}
-          onMouseDown={stopEvent}
-          onClick={stopEvent}
-          onKeyDown={stopEvent}
-          onBlur={() => setEditing(false)}
-          style={{
-            flex: 1,
-            background: 'transparent',
-            border: 'none',
-            // Per-note readable text color — see noteTextColor above.
-            // For default-color notes this resolves to the theme's
-            // --note-text-default token (light/dark per theme); for
-            // explicit swatches we compute from luminance so dark
-            // swatches always get light text and vice versa.
-            color: textColor,
-            fontSize: 14,
-            lineHeight: 1.5,
-            resize: 'none',
-            width: '100%',
-            pointerEvents: 'auto',
-            userSelect: 'text',
-          }}
-          placeholder="Write a note..."
-        />
-      ) : (
-        <div
-          className="no-drag"
-          data-muraldesk-interactive="true"
-          onMouseDown={beginEditing}
-          onDoubleClick={beginEditing}
-          style={{
-            flex: 1,
-            // Same textColor logic; placeholder uses opacity rather
-            // than a separate dim token so it follows the theme/swatch
-            // contrast automatically.
-            color: textColor,
-            opacity: item.text ? 1 : 0.6,
-            fontSize: 14,
-            lineHeight: 1.5,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            cursor: 'text',
-            overflow: 'auto',
-            pointerEvents: 'auto',
-            userSelect: 'text',
-          }}
-        >
-          {item.text || 'Double-click to edit note...'}
-        </div>
-      )}
+      <textarea
+        ref={textRef}
+        className="no-drag"
+        data-muraldesk-interactive="true"
+        value={item.text || ''}
+        onChange={(e) => onUpdate(item.id, { text: e.target.value })}
+        onFocus={(e) => {
+          stopEvent(e)
+          setEditing(true)
+        }}
+        onMouseDown={beginEditing}
+        onClick={stopEvent}
+        onKeyDown={stopEvent}
+        onBlur={(e) => {
+          if (rootRef.current?.contains(e.relatedTarget)) return
+          setEditing(false)
+        }}
+        style={{
+          flex: 1,
+          background: 'transparent',
+          border: 'none',
+          // Per-note readable text color — see noteTextColor above.
+          // For default-color notes this resolves to the theme's
+          // --note-text-default token (light/dark per theme); for
+          // explicit swatches we compute from luminance so dark
+          // swatches always get light text and vice versa.
+          color: textColor,
+          fontSize: 14,
+          lineHeight: 1.5,
+          resize: 'none',
+          width: '100%',
+          opacity: item.text || editing ? 1 : 0.6,
+          pointerEvents: 'auto',
+          userSelect: 'text',
+          cursor: 'text',
+          outline: 'none',
+        }}
+        placeholder="Click to write note..."
+      />
     </div>
   )
 }

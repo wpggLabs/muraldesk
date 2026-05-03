@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld('muraldesk', {
   // so the renderer needs an explicit way to minimize / close. These are
   // the only IPC channels that can mutate window state besides fullscreen.
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  focusWindow: () => ipcRenderer.invoke('window:focus'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   // Click-through for the transparent overlay. Pass `{ forward: true }`
   // when ignoring so the renderer keeps receiving mousemove events and

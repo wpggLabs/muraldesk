@@ -740,6 +740,14 @@ ipcMain.handle('window:minimize', (_event) => {
   return true
 })
 
+ipcMain.handle('window:focus', (_event) => {
+  const win = BrowserWindow.fromWebContents(_event.sender)
+  if (!win || win.isDestroyed()) return false
+  if (!win.isVisible()) win.show()
+  win.focus()
+  return true
+})
+
 ipcMain.handle('window:close', (_event) => {
   const win = BrowserWindow.fromWebContents(_event.sender)
   if (!win || win.isDestroyed()) return false

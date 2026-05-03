@@ -59,8 +59,10 @@ export function useElectronClickThrough(isElectron) {
     if (!isElectron) return
     const bridge = typeof window !== 'undefined' ? window.muraldesk : null
     if (!bridge || typeof bridge.setIgnoreMouseEvents !== 'function') return
+    const forceInteractiveTokens = new Set()
 
     function applyIgnore(nextIgnore) {
+      if (forceInteractiveTokens.size > 0) nextIgnore = false
       if (ignoringRef.current === nextIgnore) return
       ignoringRef.current = nextIgnore
       try {
@@ -79,6 +81,7 @@ export function useElectronClickThrough(isElectron) {
     // Cancel pending async work on unmount so we never call
     // applyIgnore after the effect has been cleaned up.
     let cancelled = false
+    let cursorRequestPending = false
 
     // Run a real hit-test at the current OS cursor position before any
     // mousemove fires, so the initial click-through state is always
@@ -95,18 +98,16 @@ export function useElectronClickThrough(isElectron) {
       applyIgnore(!interactive)
     }
 
-    if (typeof bridge.getCursorPositionInWindow === 'function') {
+    function runCurrentCursorHitTest() {
+      if (typeof bridge.getCursorPositionInWindow !== 'function') return
+      if (cursorRequestPending) return
+      cursorRequestPending = true
       bridge.getCursorPositionInWindow().then((pos) => {
         if (cancelled) return
         if (
           pos &&
           typeof pos.x === 'number' &&
           typeof pos.y === 'number' &&
-          // Only trust positions that land inside the viewport. A
-          // negative or out-of-bounds value (cursor on a different
-          // monitor, or sitting in the OS chrome) gets the same
-          // treatment as elementFromPoint returning null: click-
-          // through ON.
           pos.x >= 0 &&
           pos.y >= 0 &&
           pos.x < window.innerWidth &&
@@ -117,12 +118,14 @@ export function useElectronClickThrough(isElectron) {
           applyIgnore(true)
         }
       }).catch(() => {
-        // IPC failed; fall back to click-through ON which matches the
-        // user's primary complaint ("clicks behind MuralDesk are
-        // blocked"). Toolbar/card clicks still work as soon as the
-        // cursor moves onto them.
         if (!cancelled) applyIgnore(true)
+      }).finally(() => {
+        cursorRequestPending = false
       })
+    }
+
+    if (typeof bridge.getCursorPositionInWindow === 'function') {
+      runCurrentCursorHitTest()
     } else {
       // Older preload without the cursor-position bridge. Default to
       // click-through ON so empty-area desktop clicks still work.
@@ -174,13 +177,41 @@ export function useElectronClickThrough(isElectron) {
       applyIgnore(!interactive)
     }
 
+    function onForceInteractive(e) {
+      const active = !!e.detail?.active
+      const token = e.detail?.token || 'default'
+      if (active) {
+        forceInteractiveTokens.add(token)
+        applyIgnore(false)
+        if (typeof bridge.focusWindow === 'function') {
+          try { bridge.focusWindow() } catch { /* ignore */ }
+        }
+        return
+      }
+      forceInteractiveTokens.delete(token)
+      runCurrentCursorHitTest()
+    }
+
+    const poll = setInterval(() => {
+      // `forward:true` should keep mousemove flowing while ignored,
+      // but Windows can still miss the transition before the user's
+      // click. Polling only while ignored is a narrow safety net that
+      // turns cards/editors interactive as soon as the cursor rests on
+      // them, without disabling desktop click-through elsewhere.
+      if (!ignoringRef.current || forceInteractiveTokens.size > 0) return
+      runCurrentCursorHitTest()
+    }, 80)
+
     window.addEventListener('mousemove', onMove, { passive: true })
     window.addEventListener('mouseup', onUp, { passive: true })
+    window.addEventListener('muraldesk:force-interactive', onForceInteractive)
 
     return () => {
       cancelled = true
+      clearInterval(poll)
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('muraldesk:force-interactive', onForceInteractive)
       // On unmount / HMR, leave the window interactive. Otherwise a
       // hot-reload could orphan it in click-through mode and the user
       // wouldn't be able to click anything until the next mousemove.
