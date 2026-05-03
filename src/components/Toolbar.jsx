@@ -119,6 +119,15 @@ function Toolbar({
   useEffect(() => {
     if (!compact && moreOpen) setMoreOpen(false)
   }, [compact, moreOpen])
+  // Auto-close the More popover whenever the toolbar transitions to
+  // fully-hidden (Desktop / Electron / Focus mode lose `revealed`).
+  // Without this the popover would linger as a "ghost" panel in the
+  // corner of the screen — visually present, opacity-faded by the
+  // wrapper, but with stale state. Closing it on hide guarantees a
+  // fresh interaction next time the user reveals the toolbar.
+  useEffect(() => {
+    if (!revealed && moreOpen) setMoreOpen(false)
+  }, [revealed, moreOpen])
   useEffect(() => {
     if (!moreOpen) return
     function onDocMouseDown(e) {
@@ -487,10 +496,12 @@ function Toolbar({
         <span
           style={{
             color: 'var(--text)',
-            fontWeight: 600,
-            fontSize: 12,
+            fontFamily: "'VastagoBlack', 'VastagoRegular', 'Inter', system-ui, sans-serif",
+            fontWeight: 900,
+            fontSize: 12.5,
             padding: '0 10px 0 8px',
-            letterSpacing: -0.1,
+            letterSpacing: 0.2,
+            textTransform: 'uppercase',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 6,

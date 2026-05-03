@@ -26,16 +26,12 @@
     <meta name="apple-mobile-web-app-title" content="MuralDesk" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <!-- Inter — modern desktop-app feel (Raycast / Linear-style). Loaded
-         async with a swap fallback so first paint never blocks on the
-         font; the system stack in CSS keeps the layout stable until
-         Inter resolves. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Vastago Grotesk — MuralDesk's brand typeface. Loaded locally via
+         @font-face in src/index.css from public/fonts/, so no external
+         font CDN is contacted (works offline, works inside the Electron
+         overlay, no Google Fonts round-trip on first paint). The
+         system-ui fallback in the CSS font-family stack keeps layout
+         stable during the brief swap window. -->
   </head>
   <body>
     <div id="root"></div>
