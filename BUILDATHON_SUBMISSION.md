@@ -47,26 +47,26 @@ The key positioning:
 
 - **Pin anything visual** — drag-and-drop or pick local images and videos, paste a URL, or write a sticky note. Items become draggable, resizable cards.
 - **Smart links** — paste a URL and MuralDesk picks the right card type for you:
-  - YouTube URLs → embedded player (autoplay-muted, loops cleanly).
-  - Direct video URLs (`.mp4`, `.webm`, `.mov`) → inline `<video>` with mute / loop toggles.
-  - Direct image URLs (`.png`, `.jpg`, `.gif`, `.webp`) → inline image card.
-  - Anything else → web preview with favicon, title, and description.
+  - **YouTube · Vimeo · SoundCloud · Spotify · CodePen** URLs → embedded playable card (autoplay-muted where applicable, loops cleanly).
+  - Direct video URLs (`.mp4`, `.webm`, `.mov`, `.ogg`) → inline `<video>` with mute / loop toggles.
+  - Direct image URLs (`.png`, `.jpg`, `.gif`, `.webp`, `.svg`) → inline image card.
+  - Any other normal web link → favicon + title preview card with Open and Copy URL chips.
 - **Looping ambient videos** — local files and direct video links loop silently by default for true reference-clip feel; hover for mute / loop / interact controls.
 - **Per-item polish** — every card has a hover-only mini-toolbar with opacity slider, object-fit toggle (cover / contain), lock, duplicate, and delete.
 - **Transparent Electron overlay** — frameless, no shadow, fully transparent background; only the cards render.
 - **Click-through empty areas** — renderer-side hit-test forwards mouse events to the OS for non-card regions via `setIgnoreMouseEvents`. Use the apps underneath without minimizing.
-- **Full-display Desktop Canvas Mode** — `Ctrl/Cmd+Shift+F` (or toolbar button) takes the window fullscreen and tucks the toolbar into a thin reveal-zone at the top of the screen.
+- **Full-display Desktop Canvas Mode** — `Ctrl/Cmd+Shift+D` (or toolbar button) toggles the Desktop Mode overlay: the transparent window expands to cover the current display via window bounds (not OS fullscreen), and the toolbar tucks into a thin reveal-zone at the top of the screen.
 - **System tray** — closing hides to tray; tray menu has Show, Toggle Desktop Mode, and Quit.
 - **Local-first persistence** — layout metadata in `localStorage` (`muraldesk-board`), media bytes in IndexedDB (`muraldesk` / `media` keyed by UUID). No data ever leaves the device.
 - **Portable backup** — one click exports a single `.muraldesk.json` file bundling layout *and* base64-encoded media, restorable on any other machine. Import auto-detects backup vs. layout-only files.
 - **PWA install** — installable in Chrome / Edge / Safari, fully offline-capable via a service worker app shell, with a branded icon set (192/512 PNG, maskable adaptive, Apple touch icon, multi-size favicon).
-- **Sample board + keyboard shortcuts** — one-click sample mural to skip the empty state; `Ctrl/Cmd+Shift+I/V/L` opens the image / video / link pickers.
+- **Sample board + keyboard shortcuts** — one-click sample mural to skip the empty state; `Ctrl/Cmd+Shift+I/V/L` opens the image / video / link pickers; `Ctrl/Cmd+Shift+D` toggles Desktop Mode.
 
 ## Technical stack
 
 | Layer | Choice | Why |
 |---|---|---|
-| Renderer | React 18 + Vite 5 | Fast HMR, tiny bundle (~74 KB gzipped), no framework lock-in. |
+| Renderer | React 18 + Vite 5 | Fast HMR, tiny bundle (~80 KB gzipped), no framework lock-in. |
 | Drag / resize | `react-rnd` | Battle-tested, handles scaled containers and locked aspect ratios so I didn't have to. |
 | Desktop shell | Electron 31 | Mature transparent-window support across Windows, macOS, and Linux. |
 | Packaging | electron-builder 25 | One-line Windows `.exe` (NSIS), cross-builds from any host, no Wine needed for unsigned builds. |
@@ -83,7 +83,7 @@ Total runtime dependencies: **`react`, `react-dom`, `react-rnd`, `uuid`.** That'
 - **Smart link classification.** A single `<input>` becomes four different card types (YouTube embed / direct video / direct image / web preview) based on URL parsing — no per-source picker UI, no manual toggles. Unsafe protocols (`javascript:`, `data:`) are stripped on import so a malicious backup file can never produce a clickable href.
 - **Two distinct export paths, one Import button.** Quick layout JSON for same-browser archival; portable `.muraldesk.json` backup with embedded media for cross-machine restore. Import auto-detects the format via a `kind: 'backup'` field, so users see one button instead of two confusing ones.
 - **Ambient-first UX.** Hover-only mini-toolbars, opacity sliders, fit toggles, looping muted videos by default — every UX choice is biased toward "this should fade into the background" rather than "this should grab attention." That's the opposite of how most consumer apps are designed, and it's what makes a desktop overlay actually livable.
-- **Zero heavy dependencies.** No `sharp` for image processing, no `puppeteer` for screenshots, no `electron-store` for window state, no `redux` / `zustand` for state. Custom hooks (`useBoard`, `useDesktopMode`, `useElectronClickThrough`) and the platform's own primitives do the work. The whole production bundle is ~74 KB gzipped.
+- **Zero heavy dependencies.** No `sharp` for image processing, no `puppeteer` for screenshots, no `electron-store` for window state, no `redux` / `zustand` for state. Custom hooks (`useBoard`, `useDesktopMode`, `useElectronClickThrough`) and the platform's own primitives do the work. The whole production bundle is ~80 KB gzipped.
 
 ## What was built during the buildathon
 
@@ -97,7 +97,7 @@ Everything below was implemented from scratch within the buildathon window:
 - **Electron shell** (`electron/main.cjs`, `electron/preload.cjs`) — transparent / frameless / no-shadow window, persisted geometry, secure preload bridge, IPC for fullscreen / minimize / close / desktop-mode toggle.
 - **Click-through + Desktop Canvas Mode** (`useElectronClickThrough`, `useDesktopMode`) — renderer hit-test, `setIgnoreMouseEvents` plumbing, fullscreen toggle that auto-hides the toolbar to a top reveal-zone.
 - **System tray** — `Tray` with Show / Toggle Desktop Mode / Quit menu, hide-to-tray on close, dynamic menu refresh when overlay state changes.
-- **Smart-link classifier** (`src/lib/linkType.js`, `LinkCard.jsx`) — protocol whitelist, YouTube ID extraction, extension-based video / image detection, generic web-preview fallback with favicon and metadata fetch.
+- **Smart-link classifier** (`src/lib/linkType.js`, `LinkCard.jsx`) — protocol whitelist (`http:` / `https:` only — `javascript:`, `data:`, `file:`, etc. are stripped), per-provider host allow-lists and strict ID/slug regex validation for YouTube, Vimeo, SoundCloud, Spotify, and CodePen embeds, extension-based direct-video / direct-image detection, and a generic web-preview fallback with favicon and metadata fetch for everything else.
 - **PWA layer** — `public/manifest.webmanifest`, `public/sw.js` (app-shell precache + smart fetch handler that never touches `blob:` URLs), installable across Chrome / Edge / Safari.
 - **Branded icon set** — hand-authored SVG (dark rounded square + 3-card mural + purple accent) rendered to 8 PNG/ICO targets via ImageMagick, wired through `package.json` electron-builder config (`win.icon`, `linux.icon`, `mac.icon`) and `BrowserWindow({ icon })`.
 - **Portable backup format** (`src/lib/backup.js`) — `buildBackup` / `restoreBackup` / `isBackupPayload` / `formatBytes`, base64 media encoding via FileReader, four explicit size limits (25 MB / 50 MB / 100 MB / 200 MB), skip-with-reason tracking so over-cap items still keep their layout without dangling references.
@@ -110,8 +110,8 @@ A 90-second walkthrough that shows the app's full personality without dragging.
 
 1. **Open the app on a normal desktop with a couple of windows visible.** Show that MuralDesk floats above them and that empty space *is* clicking through to the apps underneath — drag a window, click a button on it, etc., all without minimizing MuralDesk.
 2. **Click `✨ Sample` in the toolbar.** A dozen-item mural appears: images, a looping video, a YouTube embed, a couple of notes, a few links. Drag a few cards around. Resize one. Hover one to show the mini-toolbar; drop its opacity to ~40% so it fades into the background.
-3. **Paste a YouTube URL.** Show that it auto-becomes an embedded player. Paste a direct image URL. Show that it auto-becomes an image card. Paste a regular web link. Show that it becomes a preview card with favicon + title.
-4. **Hit `Ctrl/Cmd+Shift+F`.** Window goes fullscreen, toolbar tucks to the top of the screen. Demonstrate that the mural now occupies the entire display. Move the mouse to the very top to reveal the toolbar; move away to hide it.
+3. **Paste a YouTube URL.** Show that it auto-becomes an embedded player. Paste a Vimeo, SoundCloud, Spotify, or CodePen URL — each auto-becomes the right embedded card. Paste a direct image URL. Show that it auto-becomes an image card. Paste a regular web link. Show that it becomes a preview card with favicon + title.
+4. **Hit `Ctrl/Cmd+Shift+D`.** Desktop Mode toggles on: the transparent overlay window expands to cover the current display (via window bounds — not OS fullscreen), and the toolbar tucks into a thin reveal-zone at the top of the screen. Demonstrate that the mural now spans the whole display and that empty regions still click through to the apps underneath. Move the mouse to the very top to reveal the toolbar; move away to hide it. Hit `Ctrl/Cmd+Shift+D` again to restore the previous window size and position.
 5. **Exit Desktop Mode. Close the window via the X.** The window hides; show that MuralDesk is now living in the system tray. Click the tray icon → window comes back exactly where it was.
 6. **Click `📦 Backup`.** A `.muraldesk.json` file downloads. Open it briefly in a text editor to show the JSON structure with embedded base64 media — the file is portable, single-file, no folders.
 7. **Click `🗑 Clear`** → confirm. Board empties.
@@ -151,6 +151,3 @@ I'd rather be judged on what the project actually is than on what a marketing pa
 ## Links
 
 - **GitHub:** https://github.com/wpggLabs/muraldesk
-- **Demo:** _(placeholder — live PWA URL to be filled in before submission)_
-- **Video:** _(placeholder — 90-second walkthrough following the demo script above, to be recorded and uploaded before submission)_
-- **Windows build:** _(placeholder — `MuralDesk-Setup-0.1.0.exe` from `release/` after running `npm run build:desktop`, to be uploaded before submission)_
